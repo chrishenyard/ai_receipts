@@ -1,14 +1,16 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-var ollama = builder.AddOllama("ollama", 11445)
+var ollama = builder.AddOllama("ollama")
     .WithDataVolume("ollama")
     .WithAnnotation(new ContainerImageAnnotation
     {
+        Registry = "docker.io",
         Image = "ollama/ollama",
         Tag = "0.14.0-rc2"
-    });
+    })
+    .WithOpenWebUI();
 
-var visionModel = ollama.AddModel("redhat/granite-3-2b-instruct");
+var visionModel = ollama.AddModel("granite3.2-vision");
 
 builder.AddProject<Projects.ai_receipts>("ai-receipts")
     .WithReference(visionModel)
