@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Packages.props" />
+  </Folder>
+  <Project Path="ai_receipts.AppHost/ai_receipts.AppHost.csproj" Id="24b25dae-4a2f-478c-9af5-bf17f492e83c" />
+  <Project Path="ai_receipts.ServiceDefaults/ai_receipts.ServiceDefaults.csproj" />
+  <Project Path="ai_receipts/ai_receipts.csproj" />
+</Solution>
