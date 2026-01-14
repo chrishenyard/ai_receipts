@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -6,17 +6,28 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>7cbafd09-81d7-4100-8c16-f2f74a1d4fcd</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <DockerComposeProjectPath>..\docker-compose.dcproj</DockerComposeProjectPath>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
+	<PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" />
+	<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+	<PackageReference Include="Microsoft.AspNetCore.Identity.UI" />
+	<PackageReference Include="Microsoft.Extensions.Caching.Hybrid" />
+	<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
     <PackageReference Include="OllamaSharp" />
-    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\ai_receipts.ServiceDefaults\ai_receipts.ServiceDefaults.csproj" />
+	<PackageReference Include="OpenTelemetry.Exporter.Console" />
+	<PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+	<PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+	<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+	<PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" />
+	<PackageReference Include="Seq.App.OTelMetrics" />
+	<PackageReference Include="Serilog" />
+	<PackageReference Include="Serilog.AspNetCore" />
+	<PackageReference Include="Serilog.Sinks.Console" />
+	<PackageReference Include="Serilog.Sinks.Seq" />
+	<PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,84 @@
+services:
+  ai_receipts:
+    image: ${DOCKER_REGISTRY-}aireceipts:${VERSION}
+    build:
+      context: .
+      dockerfile: ai_receipts/Dockerfile
+      args:
+        - AUTHORS=${AUTHORS}
+        - VERSION=${VERSION}
+        - TITLE=${TITLE}
+        - DESCRIPTION=${DESCRIPTION}
+    ports:
+      - 9020:8081
+    networks:
+      - ai_receipts_network
+    depends_on:
+      mssql:
+        condition: service_healthy
+      seq:
+        condition: service_started
+      ollama:
+        condition: service_started
+    volumes:
+      - ai_receipts_logs:/app/logs/ai_receipts/
+
+  mssql:
+    image: mcr.microsoft.com/mssql/server@sha256:db9a8fe3098b7e8bbde41106bdc7caee942e97124e5fdb71b872ca208de3092d
+    container_name: mssql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+    env_file:
+      - ./.env
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -U sa -P \"${MSSQL_SA_PASSWORD}\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    ports:
+      - 1440:1433
+    networks:
+      - ai_receipts_network
+    volumes:
+      - ai_receipts_mssql_data:/var/opt/mssql
+
+  ollama:
+    image: ghcr.io/ollama/ollama@sha256:3f4e1f3f5e2b6e4c8e2f4d6a7b8c9d0e1f2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o
+    ports:
+      - 11434:11434
+    networks:
+      - ai_receipts_network
+    restart: unless-stopped
+
+  openwebui:
+    image: openwebui/openwebui@sha256:5a6b7c8d9e0f1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z
+    ports:
+      - 8080:8080
+    networks:
+      - ai_receipts_network
+    restart: unless-stopped
+
+  seq:
+    image: datalust/seq@sha256:3cfad751637b869617ff7fc296495681f5365a8c3046b36ab654a0f5a8ff04e5
+    ports:
+      - 5341:5341
+      - 8081:80
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_ADMINPASSWORD=${SEQ_FIRSTRUN_ADMINPASSWORD}
+    networks:
+      - ai_receipts_network
+    volumes:
+      - ai_receipts_seq_data:/data
+    restart: unless-stopped
+
+networks:
+  ai_receipts_network:
+    driver: bridge
+
+volumes:
+  ai_receipts_mssql_data:
+  ai_receipts_logs:
+  ai_receipts_seq_data:
