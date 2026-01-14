@@ -14,7 +14,6 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Directory.Packages.props", "."]
 COPY ["ai_receipts/ai_receipts.csproj", "ai_receipts/"]
-COPY ["ai_receipts.ServiceDefaults/ai_receipts.ServiceDefaults.csproj", "ai_receipts.ServiceDefaults/"]
 RUN dotnet restore "./ai_receipts/ai_receipts.csproj"
 COPY . .
 WORKDIR "/src/ai_receipts"

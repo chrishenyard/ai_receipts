@@ -45,17 +45,30 @@ services:
       - ai_receipts_mssql_data:/var/opt/mssql
 
   ollama:
-    image: ghcr.io/ollama/ollama@sha256:3f4e1f3f5e2b6e4c8e2f4d6a7b8c9d0e1f2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o
+    image: ollama/ollama
     ports:
       - 11434:11434
+    volumes:
+      - ollama:/root/.ollama
     networks:
       - ai_receipts_network
     restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
   openwebui:
-    image: openwebui/openwebui@sha256:5a6b7c8d9e0f1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z
+    image: ghcr.io/open-webui/open-webui:main
     ports:
       - 8080:8080
+    volumes:
+      - open-webui:/app/backend/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - ai_receipts_network
     restart: unless-stopped
@@ -82,3 +95,6 @@ volumes:
   ai_receipts_mssql_data:
   ai_receipts_logs:
   ai_receipts_seq_data:
+  ollama:
+  open-webui:
+
