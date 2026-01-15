@@ -2,6 +2,8 @@
   <Folder Name="/Solution Items/">
     <File Path=".env" />
     <File Path="Directory.Packages.props" />
+    <File Path="Docker-Compose-Down.ps1" />
+    <File Path="Docker-Compose-Up.ps1" />
   </Folder>
   <Project Path="ai_receipts/ai_receipts.csproj" />
   <Project Path="docker-compose.dcproj">

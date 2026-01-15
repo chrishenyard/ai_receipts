@@ -1,6 +1,6 @@
 services:
   ai_receipts:
-    image: ${DOCKER_REGISTRY-}aireceipts:${VERSION}
+    image: ${DOCKER_REGISTRY-}ai_receipts:${VERSION}
     build:
       context: .
       dockerfile: ai_receipts/Dockerfile

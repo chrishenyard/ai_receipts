@@ -10,6 +10,8 @@ public class EndPoints
 {
     public static void Map(WebApplication app)
     {
+        app.MapGet("/", () => "AI Receipts is running...");
+
         app.MapPost("/receipt", async (
             HttpRequest request,
             OllamaApiClient ollamaClient,

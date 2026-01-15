@@ -1,4 +1,5 @@
 using ai_receipts.Configuration;
+using ai_receipts.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,5 +40,5 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-
+EndPoints.Map(app);
 app.Run();
