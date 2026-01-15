@@ -1,2 +1,2 @@
-docker compose stop ai_receipts
-docker compose rm -f ai_receipts
+docker compose stop AI.Receipts
+docker compose rm -f AI.Receipts

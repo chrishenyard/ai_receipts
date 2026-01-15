@@ -4,8 +4,9 @@
     <File Path="Directory.Packages.props" />
     <File Path="Docker-Compose-Down.ps1" />
     <File Path="Docker-Compose-Up.ps1" />
+    <File Path="README.md" />
   </Folder>
-  <Project Path="ai_receipts/ai_receipts.csproj" />
+  <Project Path="AI.Receipts/AI.Receipts.csproj" />
   <Project Path="docker-compose.dcproj">
     <Build />
   </Project>

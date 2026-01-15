@@ -1,10 +1,10 @@
-﻿using ai_receipts.Settings;
+﻿using AI.Receipts.Settings;
 using Microsoft.Extensions.Options;
 using OllamaSharp;
 using OllamaSharp.Models.Chat;
 using System.Text;
 
-namespace ai_receipts.Services;
+namespace AI.Receipts.Services;
 
 public class EndPoints
 {

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace ai_receipts.Settings;
+namespace AI.Receipts.Settings;
 
 public class SeqSettings
 {

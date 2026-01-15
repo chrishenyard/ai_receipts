@@ -1,5 +1,5 @@
-﻿using ai_receipts.Configuration;
-using ai_receipts.Settings;
+﻿using AI.Receipts.Configuration;
+using AI.Receipts.Settings;
 using OllamaSharp;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
@@ -7,7 +7,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
-namespace ai_receipts.Configuration;
+namespace AI.Receipts.Configuration;
 
 public static class ServiceExtensions
 {
@@ -60,7 +60,7 @@ public static class ServiceExtensions
             .Get<SeqSettings>()!;
 
         services.AddOpenTelemetry()
-            .ConfigureResource(resource => resource.AddService("ai_receipts"))
+            .ConfigureResource(resource => resource.AddService("AI.Receipts"))
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
                 .AddOtlpExporter(options =>

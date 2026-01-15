@@ -1,5 +1,5 @@
-using ai_receipts.Configuration;
-using ai_receipts.Services;
+using AI.Receipts.Configuration;
+using AI.Receipts.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 

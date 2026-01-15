@@ -1,9 +1,9 @@
 services:
-  ai_receipts:
-    image: ${DOCKER_REGISTRY-}ai_receipts:${VERSION}
+  AI.Receipts:
+    image: ${DOCKER_REGISTRY-}AI.Receipts:${VERSION}
     build:
       context: .
-      dockerfile: ai_receipts/Dockerfile
+      dockerfile: AI.Receipts/Dockerfile
       args:
         - AUTHORS=${AUTHORS}
         - VERSION=${VERSION}
@@ -14,8 +14,6 @@ services:
     networks:
       - ai_receipts_network
     depends_on:
-      mssql:
-        condition: service_healthy
       seq:
         condition: service_started
       ollama:
@@ -23,36 +21,22 @@ services:
     volumes:
       - ai_receipts_logs:/app/logs/ai_receipts/
 
-  mssql:
-    image: mcr.microsoft.com/mssql/server@sha256:db9a8fe3098b7e8bbde41106bdc7caee942e97124e5fdb71b872ca208de3092d
-    container_name: mssql
-    environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
-    env_file:
-      - ./.env
-    healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -U sa -P \"${MSSQL_SA_PASSWORD}\" -C -Q 'SELECT 1' || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
-    ports:
-      - 1440:1433
-    networks:
-      - ai_receipts_network
+  sqllite:
+    image: alpine/sqlite3@sha256:23ac7965b66fe40c9aaeeebd231230bda79c972a2759a6b9c20e67e668e1a5d7
+    working_dir: /apps
     volumes:
-      - ai_receipts_mssql_data:/var/opt/mssql
+      - ai_receipts_sqlite:/apps
 
   ollama:
     image: ollama/ollama
+    container_name: ollama
     ports:
       - 11434:11434
     volumes:
       - ollama:/root/.ollama
     networks:
       - ai_receipts_network
-    restart: unless-stopped
+    restart: always
     deploy:
       resources:
         reservations:
@@ -71,7 +55,7 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - ai_receipts_network
-    restart: unless-stopped
+    restart: always
 
   seq:
     image: datalust/seq@sha256:3cfad751637b869617ff7fc296495681f5365a8c3046b36ab654a0f5a8ff04e5
@@ -85,14 +69,14 @@ services:
       - ai_receipts_network
     volumes:
       - ai_receipts_seq_data:/data
-    restart: unless-stopped
+    restart: always
 
 networks:
   ai_receipts_network:
     driver: bridge
 
 volumes:
-  ai_receipts_mssql_data:
+  ai_receipts_sqlite:
   ai_receipts_logs:
   ai_receipts_seq_data:
   ollama:
