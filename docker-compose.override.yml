@@ -1,5 +1,5 @@
 services:
-  AI.Receipts:
+  ai.receipts:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTPS_PORTS=8081

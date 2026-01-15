@@ -1,5 +1,6 @@
 using AI.Receipts.Configuration;
 using AI.Receipts.Services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,7 +26,8 @@ builder.Services
     .AddProblemDetails()
     .AddSettings()
     .AddHttp(configuration)
-    .AddServices();
+    .AddServices()
+    .AddDbContext(configuration);
 
 var app = builder.Build();
 

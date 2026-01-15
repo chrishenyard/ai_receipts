@@ -12,16 +12,16 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Directory.Packages.props", "."]
-COPY ["AI.Receipts/AI.Receipts`.csproj", "AI.Receipts/"]
-RUN dotnet restore "./AI.Receipts/AI.Receipts.csproj"
+COPY ["ai.receipts/ai.receipts.csproj", "ai.receipts/"]
+RUN dotnet restore "./ai.receipts/ai.receipts.csproj"
 COPY . .
-WORKDIR "/src/AI.Receipts"
-RUN dotnet build "./AI.Receipts.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/ai.receipts"
+RUN dotnet build "./ai.receipts.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./AI.Receipts.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./ai.receipts.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final
@@ -36,4 +36,4 @@ LABEL \
     org.opencontainers.image.version="${VERSION}" \
     org.opencontainers.image.licenses="Apache-2.0"
 
-ENTRYPOINT ["dotnet", "AI.Receipts.dll"]
+ENTRYPOINT ["dotnet", "ai.receipts.dll"]

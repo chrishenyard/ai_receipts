@@ -1,5 +1,7 @@
 ﻿using AI.Receipts.Configuration;
+using AI.Receipts.Data;
 using AI.Receipts.Settings;
+using Microsoft.EntityFrameworkCore;
 using OllamaSharp;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
@@ -22,6 +24,19 @@ public static class ServiceExtensions
         return services;
     }
 
+    public static IServiceCollection AddDbContext(
+        this IServiceCollection services,
+        IConfiguration config)
+    {
+        var connectionString = config.GetConnectionString("DatabaseContext");
+        services
+            .AddDbContext<AiReceiptsDbContext>(options =>
+            {
+                options.UseSqlite(connectionString);
+            });
+
+        return services;
+    }
 
     public static IServiceCollection AddHttp(
         this IServiceCollection services,

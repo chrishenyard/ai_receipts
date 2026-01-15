@@ -1,9 +1,9 @@
 services:
-  AI.Receipts:
-    image: ${DOCKER_REGISTRY-}AI.Receipts:${VERSION}
+  ai.receipts:
+    image: ${DOCKER_REGISTRY-}ai.receipts:${VERSION}
     build:
       context: .
-      dockerfile: AI.Receipts/Dockerfile
+      dockerfile: ai.receipts/Dockerfile
       args:
         - AUTHORS=${AUTHORS}
         - VERSION=${VERSION}
@@ -22,7 +22,7 @@ services:
       - ai_receipts_logs:/app/logs/ai_receipts/
 
   sqllite:
-    image: alpine/sqlite3@sha256:23ac7965b66fe40c9aaeeebd231230bda79c972a2759a6b9c20e67e668e1a5d7
+    image: alpine/sqlite@sha256:23ac7965b66fe40c9aaeeebd231230bda79c972a2759a6b9c20e67e668e1a5d7
     working_dir: /apps
     volumes:
       - ai_receipts_sqlite:/apps
