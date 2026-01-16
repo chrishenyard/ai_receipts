@@ -2,7 +2,7 @@ services:
   ai.receipts:
     image: ${DOCKER_REGISTRY-}ai.receipts:${VERSION}
     build:
-      context: .
+      context: ./src
       dockerfile: ai.receipts/Dockerfile
       args:
         - AUTHORS=${AUTHORS}

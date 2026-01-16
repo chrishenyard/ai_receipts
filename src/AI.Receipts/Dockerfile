@@ -8,20 +8,20 @@ EXPOSE 8080
 EXPOSE 8081
 
 # This stage is used to build the service project
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk@sha256:c7445f141c04f1a6b454181bd098dcfa606c61ba0bd213d0a702489e5bd4cd71 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Directory.Packages.props", "."]
-COPY ["ai.receipts/ai.receipts.csproj", "ai.receipts/"]
-RUN dotnet restore "./ai.receipts/ai.receipts.csproj"
+COPY ["AI.Receipts/AI.Receipts.csproj", "AI.Receipts/"]
+RUN dotnet restore "./AI.Receipts/AI.Receipts.csproj"
 COPY . .
-WORKDIR "/src/ai.receipts"
-RUN dotnet build "./ai.receipts.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/AI.Receipts"
+RUN dotnet build "./AI.Receipts.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./ai.receipts.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./AI.Receipts.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final
