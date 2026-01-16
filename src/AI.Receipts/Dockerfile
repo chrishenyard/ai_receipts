@@ -36,4 +36,4 @@ LABEL \
     org.opencontainers.image.version="${VERSION}" \
     org.opencontainers.image.licenses="Apache-2.0"
 
-ENTRYPOINT ["dotnet", "ai.receipts.dll"]
+ENTRYPOINT ["dotnet", "AI.Receipts.dll"]

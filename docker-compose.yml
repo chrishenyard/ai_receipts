@@ -18,12 +18,19 @@ services:
         condition: service_started
       ollama:
         condition: service_started
+      openwebui:
+        condition: service_started
+      sqllite:
+        condition: service_started
     volumes:
       - ai_receipts_logs:/app/logs/ai_receipts/
 
   sqllite:
     image: alpine/sqlite@sha256:23ac7965b66fe40c9aaeeebd231230bda79c972a2759a6b9c20e67e668e1a5d7
+    container_name: sqlite
     working_dir: /apps
+    networks:
+      - ai_receipts_network
     volumes:
       - ai_receipts_sqlite:/apps
 
