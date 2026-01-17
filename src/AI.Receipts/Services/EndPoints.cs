@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Options;
 using OllamaSharp;
 using OllamaSharp.Models.Chat;
+using System.Buffers;
 using System.Text;
 
 namespace AI.Receipts.Services;
@@ -18,57 +19,67 @@ public class EndPoints
             IOptions<OllamaSettings> options,
             CancellationToken cancellationToken) =>
         {
-            if (string.IsNullOrEmpty(request.ContentType) || !request.ContentType.StartsWith("image/"))
+            if (string.IsNullOrEmpty(request.ContentType) ||
+                !IO.File.SupportedImageTypes.Contains(request.ContentType))
             {
-                return Results.BadRequest("Please upload an image (image/jpeg, image/png)");
+                return Results.BadRequest("Please upload an image, ex (image/jpeg, image/png)");
             }
 
             var ollamaSettings = options.Value;
+            var ocrSystemPrompt = IO.File.ReadTextFromFile("Prompts/OCRSystemPrompt.txt");
 
             try
             {
-                using var memoryStream = new MemoryStream();
-                await request.Body.CopyToAsync(memoryStream, cancellationToken);
-                var imageBytes = memoryStream.ToArray();
-                var base64Image = Convert.ToBase64String(imageBytes);
+                var contentLength = (int)(request.ContentLength ?? 0);
+                var buffer = ArrayPool<byte>.Shared.Rent(contentLength);
 
-                var chatRequest = new ChatRequest
+                try
                 {
-                    Model = ollamaSettings.VisionModel,
-                    Messages =
-                    [
-                        new (ChatRole.System, "As a OCR reader, extract the entire text from the image as is."),
-                        new()
-                        {
-                            Role = ChatRole.User,
-                            Content = "Extract the text from the image without any additional information",
-                            Images = [base64Image]
-                        }
-                    ],
-                    Stream = true
-                };
+                    var bytesRead = await request.Body.ReadAsync(buffer.AsMemory(0, contentLength), cancellationToken);
+                    var base64Image = Convert.ToBase64String(buffer, 0, bytesRead);
 
-                var chatResponse = ollamaClient.ChatAsync(chatRequest, cancellationToken: cancellationToken);
-
-                var message = new StringBuilder();
-                await foreach (var response in chatResponse)
-                {
-                    if (string.IsNullOrEmpty(response?.Message?.Content))
+                    var chatRequest = new ChatRequest
                     {
-                        continue;
+                        Model = ollamaSettings.VisionModel,
+                        Messages =
+                        [
+                            new (ChatRole.System, ocrSystemPrompt),
+                            new()
+                            {
+                                Role = ChatRole.User,
+                                Content = "Extract text from this image according to the system instructions.",
+                                Images = [base64Image]
+                            }
+                        ],
+                        Stream = true
+                    };
+
+                    var chatResponse = ollamaClient.ChatAsync(chatRequest, cancellationToken: cancellationToken);
+
+                    var message = new StringBuilder();
+                    await foreach (var response in chatResponse)
+                    {
+                        if (string.IsNullOrEmpty(response?.Message?.Content))
+                        {
+                            continue;
+                        }
+                        message.AppendLine(response?.Message?.Content);
                     }
-                    message.AppendLine(response?.Message?.Content);
+
+                    var output = message.ToString().Trim();
+
+                    if (string.IsNullOrEmpty(output))
+                    {
+                        return Results.Problem("No text extracted from the image",
+                            statusCode: StatusCodes.Status500InternalServerError);
+                    }
+
+                    return Results.Text(output, "text/plain", Encoding.UTF8);
                 }
-
-                var output = message.ToString().Trim();
-
-                if (string.IsNullOrEmpty(output))
+                finally
                 {
-                    return Results.Problem("No text extracted from the image",
-                        statusCode: StatusCodes.Status500InternalServerError);
+                    ArrayPool<byte>.Shared.Return(buffer);
                 }
-
-                return Results.Text(output, "text/plain", Encoding.UTF8);
             }
             catch (Exception ex)
             {
