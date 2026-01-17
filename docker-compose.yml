@@ -9,6 +9,7 @@ services:
         - VERSION=${VERSION}
         - TITLE=${TITLE}
         - DESCRIPTION=${DESCRIPTION}
+        - BUILD_DATE=${BUILD_DATE}
     ports:
       - 9020:8081
     networks:
@@ -34,6 +35,12 @@ services:
     networks:
       - ai_receipts_network
     restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     deploy:
       resources:
         reservations:

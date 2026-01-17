@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Prompts\OCRSystemPrompt.ttxt">
+    <Content Include="Prompts\OCRSystemPrompt.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -29,6 +29,7 @@
 	<PackageReference Include="OpenTelemetry.Extensions.Hosting" />
 	<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
 	<PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" />
+	<PackageReference Include="OpenTelemetry.Instrumentation.Http" />
 	<PackageReference Include="Seq.App.OTelMetrics" />
 	<PackageReference Include="Serilog" />
 	<PackageReference Include="Serilog.AspNetCore" />

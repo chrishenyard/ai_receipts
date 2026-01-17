@@ -1,6 +1,8 @@
+using AI.Receipts;
 using AI.Receipts.Configuration;
 using AI.Receipts.Services;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +15,11 @@ builder.Host
     .UseDefaultServiceProvider((context, options) =>
     {
         options.ValidateOnBuild = true;
+    })
+    .UseSerilog((context, configuration) =>
+    {
+        configuration
+            .ReadFrom.Configuration(context.Configuration);
     });
 
 builder
@@ -23,6 +30,7 @@ var configuration = builder.Configuration;
 builder.Services
     .AddOpenApi()
     .AddTelemetry(configuration)
+    .AddExceptionHandler<GlobalExceptionHandler>()
     .AddProblemDetails()
     .AddSettings()
     .AddHttp(configuration)
@@ -40,7 +48,8 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+app.UseHttpsRedirection()
+    .UseExceptionHandler();
 
 EndPoints.Map(app);
 app.Run();

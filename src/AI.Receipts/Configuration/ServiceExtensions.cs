@@ -51,6 +51,10 @@ public static class ServiceExtensions
             {
                 httpClient.BaseAddress = new Uri(ollamaSettings.Url);
                 httpClient.Timeout = TimeSpan.FromMinutes(ollamaSettings.TimeoutFromMinutes);
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
             });
 
         return services;
@@ -58,7 +62,7 @@ public static class ServiceExtensions
 
     public static IServiceCollection AddServices(this IServiceCollection services)
     {
-        services.AddSingleton(sp =>
+        services.AddScoped(sp =>
         {
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("ollama");
             return new OllamaApiClient(httpClient);
@@ -87,6 +91,7 @@ public static class ServiceExtensions
             .WithTracing(tracing => tracing
                 .AddAspNetCoreInstrumentation()
                 .AddEntityFrameworkCoreInstrumentation()
+                .AddHttpClientInstrumentation()
                 .AddOtlpExporter(options =>
                 {
                     options.Endpoint = new Uri(seqSettings.ServerUrl);
