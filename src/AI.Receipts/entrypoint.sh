@@ -39,8 +39,25 @@ CREATE TABLE IF NOT EXISTS Receipt (
 CREATE INDEX IF NOT EXISTS idx_receipt_category ON Receipt(CategoryId);
 CREATE INDEX IF NOT EXISTS idx_receipt_purchase_date ON Receipt(PurchaseDate);
 CREATE INDEX IF NOT EXISTS idx_receipt_vendor ON Receipt(Vendor);
-EOF
 
+INSERT  INTO Category (Name)
+    SELECT 'Childcare'
+    UNION ALL SELECT 'Clothing'
+    UNION ALL SELECT 'Debt'
+    UNION ALL SELECT 'Donations'
+    UNION ALL SELECT 'Education'
+    UNION ALL SELECT 'Entertainment'
+    UNION ALL SELECT 'Financial'
+    UNION ALL SELECT 'Food'
+    UNION ALL SELECT 'Healthcare'
+    UNION ALL SELECT 'Housing'
+    UNION ALL SELECT 'Insurance'
+    UNION ALL SELECT 'Legal'
+    UNION ALL SELECT 'Petcare'
+    UNION ALL SELECT 'Transportation'
+    UNION ALL SELECT 'Utilities'
+WHERE NOT EXISTS (SELECT 1 FROM Category);
+EOF
     echo "Database and tables created successfully."
 else
     echo "Database already exists at $DB_PATH"
