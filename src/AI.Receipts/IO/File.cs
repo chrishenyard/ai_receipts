@@ -11,9 +11,4 @@ public static class File
         "image/tiff",
         "image/webp"
     ];
-
-    public static string ReadTextFromFile(string filePath)
-    {
-        return System.IO.File.ReadAllText(filePath);
-    }
 }

@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Options;
 using OllamaSharp;
 using OllamaSharp.Models.Chat;
-using System.Buffers;
 using System.Text;
 
 namespace AI.Receipts.Services;
@@ -83,16 +82,8 @@ public class EndPoints
             }
 
             var ollamaSettings = options.Value;
-            var ocrSystemPrompt = IO.File.ReadTextFromFile("Prompts/OCRSystemPrompt.txt");
-
+            var ocrSystemPrompt = await File.ReadAllTextAsync("Prompts/OCRSystemPrompt.txt", cancellationToken);
             var contentLength = (int)(request.ContentLength ?? 0);
-
-            if (contentLength == 0)
-            {
-                return Results.BadRequest("Content-Length header is required");
-            }
-
-            var buffer = ArrayPool<byte>.Shared.Rent(contentLength);
 
             try
             {
@@ -102,9 +93,6 @@ public class EndPoints
                 await request.Body.CopyToAsync(memoryStream, cancellationToken);
                 var imageBytes = memoryStream.ToArray();
                 var base64Image = Convert.ToBase64String(imageBytes);
-
-                //var bytesRead = await request.Body.ReadAsync(buffer.AsMemory(0, contentLength), cancellationToken);
-                //var base64Image = Convert.ToBase64String(buffer, 0, bytesRead);
 
                 logger.LogInformation("Sending request to Ollama at {Url} with model: {Model}", ollamaSettings.Url, ollamaSettings.VisionModel);
 
@@ -166,10 +154,6 @@ public class EndPoints
                 logger.LogError(ex, "Error processing receipt. Exception type: {Type}", ex.GetType().Name);
                 return Results.Problem($"An error occurred processing receipt: {ex.Message}",
                     statusCode: StatusCodes.Status500InternalServerError);
-            }
-            finally
-            {
-                //ArrayPool<byte>.Shared.Return(buffer);
             }
         });
     }
