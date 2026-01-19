@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AI.Receipts.Models;
 
-[Table("Category")]
+[Table("Receipt")]
 [PrimaryKey(nameof(ReceiptId))]
 public class Receipt
 {

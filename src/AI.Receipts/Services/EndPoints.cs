@@ -1,4 +1,6 @@
-﻿using AI.Receipts.Settings;
+﻿using AI.Receipts.Data;
+using AI.Receipts.Settings;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using OllamaSharp;
 using OllamaSharp.Models.Chat;
@@ -18,12 +20,15 @@ public class EndPoints
             return Results.Ok(new
             {
                 OllamaUrl = settings.Url,
-                VisionModel = settings.VisionModel,
+                settings.VisionModel,
                 TimeoutMinutes = settings.TimeoutFromMinutes
             });
         });
 
-        app.MapGet("/debug/connection", async (IHttpClientFactory httpClientFactory, IOptions<OllamaSettings> options, ILogger<EndPoints> logger) =>
+        app.MapGet("/debug/connection", async (
+            IHttpClientFactory httpClientFactory,
+            IOptions<OllamaSettings> options,
+            ILogger<EndPoints> logger) =>
         {
             try
             {
@@ -48,7 +53,10 @@ public class EndPoints
             }
         });
 
-        app.MapGet("/health/ollama", async (OllamaApiClient ollamaClient, ILogger<EndPoints> logger, IOptions<OllamaSettings> options) =>
+        app.MapGet("/health/ollama", async (
+            OllamaApiClient ollamaClient,
+            ILogger<EndPoints> logger,
+            IOptions<OllamaSettings> options) =>
         {
             try
             {
@@ -83,15 +91,15 @@ public class EndPoints
 
             var ollamaSettings = options.Value;
             var ocrSystemPrompt = await File.ReadAllTextAsync("Prompts/OCRSystemPrompt.txt", cancellationToken);
-            var contentLength = (int)(request.ContentLength ?? 0);
 
             try
             {
-                logger.LogInformation("Processing receipt image, size: {Size} bytes", contentLength);
-
                 using var memoryStream = new MemoryStream();
                 await request.Body.CopyToAsync(memoryStream, cancellationToken);
                 var imageBytes = memoryStream.ToArray();
+
+                logger.LogInformation("Processing receipt image, size: {Size} bytes", imageBytes.Length);
+
                 var base64Image = Convert.ToBase64String(imageBytes);
 
                 logger.LogInformation("Sending request to Ollama at {Url} with model: {Model}", ollamaSettings.Url, ollamaSettings.VisionModel);
@@ -113,8 +121,8 @@ public class EndPoints
                 };
 
                 var chatResponse = ollamaClient.ChatAsync(chatRequest, cancellationToken: cancellationToken);
-
                 var message = new StringBuilder();
+
                 await foreach (var response in chatResponse)
                 {
                     if (string.IsNullOrEmpty(response?.Message?.Content))
@@ -155,6 +163,12 @@ public class EndPoints
                 return Results.Problem($"An error occurred processing receipt: {ex.Message}",
                     statusCode: StatusCodes.Status500InternalServerError);
             }
+        });
+
+        app.MapGet("/api/Categories", async (AiReceiptsDbContext context) =>
+        {
+            var categories = await context.Categories.ToListAsync();
+            return Results.Ok(categories);
         });
     }
 }

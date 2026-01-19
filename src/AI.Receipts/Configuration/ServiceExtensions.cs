@@ -1,5 +1,6 @@
 ﻿using AI.Receipts.Configuration;
 using AI.Receipts.Data;
+using AI.Receipts.Services;
 using AI.Receipts.Settings;
 using Microsoft.EntityFrameworkCore;
 using OllamaSharp;
@@ -67,6 +68,8 @@ public static class ServiceExtensions
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("ollama");
             return new OllamaApiClient(httpClient);
         });
+
+        services.AddHostedService<OllamaModelInitializer>();
 
         return services;
     }
