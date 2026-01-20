@@ -24,6 +24,7 @@ services:
     volumes:
       - ai_receipts_logs:/app/logs/ai_receipts/
       - ai_receipts_sqlite:/app/db/
+      - ai_receipts_uploads:/app/uploads/
 
   ollama:
     image: ollama/ollama
@@ -85,4 +86,4 @@ volumes:
   ai_receipts_seq_data:
   ollama:
   open-webui:
-
+  ai_receipts_uploads:

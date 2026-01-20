@@ -1,5 +1,6 @@
 ﻿using AI.Receipts.Configuration;
 using AI.Receipts.Data;
+using AI.Receipts.IO;
 using AI.Receipts.Services;
 using AI.Receipts.Settings;
 using Microsoft.EntityFrameworkCore;
@@ -70,6 +71,7 @@ public static class ServiceExtensions
         });
 
         services.AddHostedService<OllamaModelInitializer>();
+        services.AddScoped<IFileSystem, FileSystem>();
 
         return services;
     }

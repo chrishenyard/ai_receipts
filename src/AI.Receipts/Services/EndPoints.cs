@@ -79,23 +79,24 @@ public class EndPoints
         app.MapPost("/api/receipt", async (
             HttpRequest request,
             OllamaApiClient ollamaClient,
+            IFormFile file,
             IOptions<OllamaSettings> options,
             ILogger<EndPoints> logger,
             CancellationToken cancellationToken) =>
         {
-            if (string.IsNullOrEmpty(request.ContentType) ||
-                !IO.File.SupportedImageTypes.Contains(request.ContentType))
+            if (string.IsNullOrEmpty(file.ContentType) ||
+                !IO.File.SupportedImageTypes.Contains(file.ContentType))
             {
                 return Results.BadRequest("Please upload an image, ex (image/jpeg, image/png)");
             }
 
             var ollamaSettings = options.Value;
-            var ocrSystemPrompt = await File.ReadAllTextAsync("Prompts/OCRSystemPrompt.txt", cancellationToken);
+            var ocrSystemPrompt = await System.IO.File.ReadAllTextAsync("Prompts/OCRSystemPrompt.txt", cancellationToken);
 
             try
             {
                 using var memoryStream = new MemoryStream();
-                await request.Body.CopyToAsync(memoryStream, cancellationToken);
+                await file.CopyToAsync(memoryStream, cancellationToken);
                 var imageBytes = memoryStream.ToArray();
 
                 logger.LogInformation("Processing receipt image, size: {Size} bytes", imageBytes.Length);
