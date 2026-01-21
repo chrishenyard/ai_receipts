@@ -28,6 +28,10 @@ builder
 var configuration = builder.Configuration;
 
 builder.Services
+    .AddAntiforgery(options =>
+    {
+        options.HeaderName = "X-XSRF-TOKEN";
+    })
     .AddOpenApi()
     .AddTelemetry(configuration)
     .AddExceptionHandler<GlobalExceptionHandler>()
@@ -49,7 +53,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection()
-    .UseExceptionHandler();
+    .UseExceptionHandler()
+    .UseAntiforgery();
 
 EndPoints.Map(app);
 app.Run();

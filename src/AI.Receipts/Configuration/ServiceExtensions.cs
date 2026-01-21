@@ -3,6 +3,7 @@ using AI.Receipts.Data;
 using AI.Receipts.IO;
 using AI.Receipts.Services;
 using AI.Receipts.Settings;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using OllamaSharp;
 using OpenTelemetry.Exporter;
@@ -20,6 +21,12 @@ public static class ServiceExtensions
         services
            .AddOptions<OllamaSettings>()
            .BindConfiguration(OllamaSettings.SectionName)
+           .ValidateDataAnnotations()
+           .ValidateOnStart();
+
+        services
+           .AddOptions<FileStorage>()
+           .BindConfiguration(FileStorage.SectionName)
            .ValidateDataAnnotations()
            .ValidateOnStart();
 
@@ -70,8 +77,11 @@ public static class ServiceExtensions
             return new OllamaApiClient(httpClient);
         });
 
-        services.AddHostedService<OllamaModelInitializer>();
-        services.AddScoped<IFileSystem, FileSystem>();
+        services.AddHostedService<OllamaModelInitializer>()
+                .AddScoped<IFileSystem, FileSystem>()
+                .AddDataProtection()
+                .PersistKeysToFileSystem(new DirectoryInfo("/app/DataProtectionKeys/"))
+                .SetApplicationName("AI.Receipts");
 
         return services;
     }

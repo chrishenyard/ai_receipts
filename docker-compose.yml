@@ -3,7 +3,7 @@ services:
     image: ${DOCKER_REGISTRY-}ai.receipts:${VERSION}
     build:
       context: ./src
-      dockerfile: ai.receipts/Dockerfile
+      dockerfile: AI.Receipts/Dockerfile
       args:
         - AUTHORS=${AUTHORS}
         - VERSION=${VERSION}
@@ -25,6 +25,7 @@ services:
       - ai_receipts_logs:/app/logs/ai_receipts/
       - ai_receipts_sqlite:/app/db/
       - ai_receipts_uploads:/app/uploads/
+    user: "1654:1654"
 
   ollama:
     image: ollama/ollama
@@ -84,6 +85,6 @@ volumes:
   ai_receipts_sqlite:
   ai_receipts_logs:
   ai_receipts_seq_data:
+  ai_receipts_uploads:
   ollama:
   open-webui:
-  ai_receipts_uploads:

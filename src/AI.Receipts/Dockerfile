@@ -6,7 +6,13 @@ RUN apt-get update && apt-get install -y sqlite3 \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /app/db \
     && chown -R $APP_UID:$APP_UID /app/db \
-    && chmod -R 755 /app/db
+    && chmod -R 755 /app/db \
+    && mkdir -p /app/DataProtectionKeys \
+    && chown -R $APP_UID:$APP_UID /app/DataProtectionKeys \
+    && chmod -R 700 /app/DataProtectionKeys \
+    && chown -R $APP_UID:$APP_UID /app/uploads \
+    && chmod -R 755 /app/uploads
+
 
 USER $APP_UID
 EXPOSE 8080

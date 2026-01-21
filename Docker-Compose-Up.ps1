@@ -1,12 +1,17 @@
 $buildDate = (Get-Date).ToUniversalTime().ToString("o")
 
-# Convert init-db.sh to Unix line endings (LF) before building
-$initDbPath = ".\src\AI.Receipts\init-db.sh"
-if (Test-Path $initDbPath) {
-    $content = Get-Content $initDbPath -Raw
-    $content = $content -replace "`r`n", "`n"
-    [System.IO.File]::WriteAllText((Resolve-Path $initDbPath), $content)
-    Write-Host "Converted init-db.sh to Unix line endings"
+# Convert scripts to Unix line endings (LF) before building
+$scripts = @(
+    ".\src\AI.Receipts\entrypoint.sh"
+)
+
+foreach ($scriptPath in $scripts) {
+    if (Test-Path $scriptPath) {
+        $content = Get-Content $scriptPath -Raw
+        $content = $content -replace "`r`n", "`n"
+        [System.IO.File]::WriteAllText((Resolve-Path $scriptPath), $content)
+        Write-Host "Converted $scriptPath to Unix line endings"
+    }
 }
 
 docker compose build --build-arg BUILD_DATE=$buildDate

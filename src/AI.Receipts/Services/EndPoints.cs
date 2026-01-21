@@ -1,5 +1,8 @@
 ﻿using AI.Receipts.Data;
+using AI.Receipts.IO;
 using AI.Receipts.Settings;
+using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using OllamaSharp;
@@ -79,15 +82,17 @@ public class EndPoints
         app.MapPost("/api/receipt", async (
             HttpRequest request,
             OllamaApiClient ollamaClient,
-            IFormFile file,
+            [FromForm] IFormFile file,
+            IFileSystem fileSystem,
             IOptions<OllamaSettings> options,
+            IOptions<FileStorage> fileStorage,
             ILogger<EndPoints> logger,
             CancellationToken cancellationToken) =>
         {
-            if (string.IsNullOrEmpty(file.ContentType) ||
-                !IO.File.SupportedImageTypes.Contains(file.ContentType))
+            (bool flowControl, IResult value) = ValidateFileUpload(file, fileStorage);
+            if (!flowControl)
             {
-                return Results.BadRequest("Please upload an image, ex (image/jpeg, image/png)");
+                return value;
             }
 
             var ollamaSettings = options.Value;
@@ -98,6 +103,7 @@ public class EndPoints
                 using var memoryStream = new MemoryStream();
                 await file.CopyToAsync(memoryStream, cancellationToken);
                 var imageBytes = memoryStream.ToArray();
+                var filePath = await fileSystem.SaveAsync(file.FileName, imageBytes, cancellationToken);
 
                 logger.LogInformation("Processing receipt image, size: {Size} bytes", imageBytes.Length);
 
@@ -171,5 +177,35 @@ public class EndPoints
             var categories = await context.Categories.ToListAsync();
             return Results.Ok(categories);
         });
+
+        app.MapGet("/generate-token", (IAntiforgery antiforgery, HttpContext httpContext) =>
+        {
+            var tokens = antiforgery.GetAndStoreTokens(httpContext);
+            // Return the request token so Postman can use it in the header
+            return Results.Ok(new { token = tokens.RequestToken });
+        });
+    }
+
+    private static (bool flowControl, IResult value) ValidateFileUpload(IFormFile file, IOptions<FileStorage> fileStorage)
+    {
+        var fileStorageSettings = fileStorage.Value;
+
+        if (file == null || file.Length == 0)
+        {
+            return (flowControl: false, value: Results.BadRequest("No file was uploaded."));
+        }
+
+        if (string.IsNullOrEmpty(file.ContentType) ||
+            !IO.File.SupportedImageTypes.Contains(file.ContentType))
+        {
+            return (flowControl: false, value: Results.BadRequest("Please upload an image, ex (image/jpeg, image/png)"));
+        }
+
+        if (file.Length > fileStorageSettings.MaxFileSizeBytes)
+        {
+            return (flowControl: false, value: Results.BadRequest($"The uploaded file exceeds the maximum allowed size of {fileStorageSettings.MaxFileSizeBytes} bytes."));
+        }
+
+        return (flowControl: true, value: Results.Ok());
     }
 }
