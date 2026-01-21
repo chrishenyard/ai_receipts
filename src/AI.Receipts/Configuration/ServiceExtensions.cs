@@ -5,7 +5,6 @@ using AI.Receipts.Services;
 using AI.Receipts.Settings;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
-using OllamaSharp;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
@@ -56,7 +55,7 @@ public static class ServiceExtensions
             .Get<OllamaSettings>()!;
 
         services
-            .AddHttpClient("ollama", (httpClient) =>
+            .AddHttpClient<IOllamaClientFactory, OllamaClientFactory>("ollama", (httpClient) =>
             {
                 httpClient.BaseAddress = new Uri(ollamaSettings.Url);
                 httpClient.Timeout = TimeSpan.FromMinutes(ollamaSettings.TimeoutFromMinutes);
@@ -71,10 +70,11 @@ public static class ServiceExtensions
 
     public static IServiceCollection AddServices(this IServiceCollection services)
     {
+        services.AddScoped<IOllamaClientFactory, OllamaClientFactory>();
         services.AddScoped(sp =>
         {
-            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("ollama");
-            return new OllamaApiClient(httpClient);
+            var factory = sp.GetRequiredService<IOllamaClientFactory>();
+            return factory.CreateClient();
         });
 
         services.AddHostedService<OllamaModelInitializer>()
@@ -94,9 +94,16 @@ public static class ServiceExtensions
             .Get<SeqSettings>()!;
 
         services.AddOpenTelemetry()
-            .ConfigureResource(resource => resource.AddService("AI.Receipts"))
+            .ConfigureResource(resource => resource
+                .AddService("AI.Receipts")
+                .AddAttributes(new Dictionary<string, object>
+                {
+                    ["deployment.environment"] = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
+                }))
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation()
+                .AddRuntimeInstrumentation()
                 .AddOtlpExporter(options =>
                 {
                     options.Endpoint = new Uri(seqSettings.ServerUrl);
@@ -104,9 +111,27 @@ public static class ServiceExtensions
                     options.Headers = $"X-Seq-ApiKey={seqSettings.ApiKey}";
                 }))
             .WithTracing(tracing => tracing
-                .AddAspNetCoreInstrumentation()
-                .AddEntityFrameworkCoreInstrumentation()
-                .AddHttpClientInstrumentation()
+                .AddAspNetCoreInstrumentation(options =>
+                {
+                    options.RecordException = true;
+                })
+                .AddEntityFrameworkCoreInstrumentation(options =>
+                {
+                    options.EnrichWithIDbCommand = (activity, command) =>
+                    {
+                        activity.SetTag("db.statement", command.CommandText);
+                    };
+                })
+                .AddHttpClientInstrumentation(options =>
+                {
+                    options.RecordException = true;
+                    options.FilterHttpRequestMessage = (httpRequestMessage) =>
+                    {
+                        // Ensure Ollama requests are captured
+                        return true;
+                    };
+                })
+                .AddSource("OllamaSharp")
                 .AddOtlpExporter(options =>
                 {
                     options.Endpoint = new Uri(seqSettings.ServerUrl);
