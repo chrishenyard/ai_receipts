@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using OllamaSharp;
 using OllamaSharp.Models.Chat;
 using System.Text;
+using System.Text.Json;
 
 namespace AI.Receipts.Services;
 
@@ -105,7 +106,7 @@ public class EndPoints
                 var imageBytes = memoryStream.ToArray();
                 var filePath = await fileSystem.SaveAsync(file.FileName, imageBytes, cancellationToken);
 
-                logger.LogInformation("Processing receipt image, size: {Size} bytes", imageBytes.Length);
+                logger.LogInformation("Processing receipt image, size: {Size} bytes, saved to: {Path}", imageBytes.Length, filePath);
 
                 var base64Image = Convert.ToBase64String(imageBytes);
 
@@ -120,11 +121,12 @@ public class EndPoints
                         new()
                         {
                             Role = ChatRole.User,
-                            Content = "Extract text from this image according to the system instructions.",
+                            Content = "Analyze this receipt image and extract the information according to the system instructions. Return only valid JSON.",
                             Images = [base64Image]
                         }
                     ],
-                    Stream = true
+                    Stream = true,
+                    Format = "json"
                 };
 
                 var chatResponse = ollamaClient.ChatAsync(chatRequest, cancellationToken: cancellationToken);
@@ -148,8 +150,24 @@ public class EndPoints
                         statusCode: StatusCodes.Status500InternalServerError);
                 }
 
+                // Clean up the output - remove markdown code blocks if present
+                output = output.Replace("```json", "").Replace("```", "").Trim();
+
                 logger.LogInformation("Successfully extracted text, length: {Length} characters", output.Length);
-                return Results.Text(output, "text/plain", Encoding.UTF8);
+                logger.LogDebug("Extracted JSON: {Json}", output);
+
+                // Validate JSON
+                try
+                {
+                    using var jsonDoc = JsonDocument.Parse(output);
+                    return Results.Content(output, "application/json", Encoding.UTF8);
+                }
+                catch (JsonException jsonEx)
+                {
+                    logger.LogError(jsonEx, "Invalid JSON returned from Ollama: {Output}", output);
+                    return Results.Problem("The extracted data is not valid JSON",
+                        statusCode: StatusCodes.Status500InternalServerError);
+                }
             }
             catch (HttpRequestException ex)
             {
@@ -181,7 +199,6 @@ public class EndPoints
         app.MapGet("/generate-token", (IAntiforgery antiforgery, HttpContext httpContext) =>
         {
             var tokens = antiforgery.GetAndStoreTokens(httpContext);
-            // Return the request token so Postman can use it in the header
             return Results.Ok(new { token = tokens.RequestToken });
         });
     }

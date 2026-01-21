@@ -10,7 +10,7 @@ if [ ! -f "$DB_PATH" ]; then
     sqlite3 "$DB_PATH" <<EOF
 -- Create Category table
 CREATE TABLE IF NOT EXISTS Category (
-    CategoryId INTEGER PRIMARY KEY AUTOINCREMENT,
+    CategoryId INTEGER PRIMARY KEY,
     Name TEXT NOT NULL CHECK(length(Name) <= 100)
 );
 
@@ -39,22 +39,22 @@ CREATE INDEX IF NOT EXISTS idx_receipt_category ON Receipt(CategoryId);
 CREATE INDEX IF NOT EXISTS idx_receipt_purchase_date ON Receipt(PurchaseDate);
 CREATE INDEX IF NOT EXISTS idx_receipt_vendor ON Receipt(Vendor);
 
-INSERT  INTO Category (Name)
-    SELECT 'Childcare'
-    UNION ALL SELECT 'Clothing'
-    UNION ALL SELECT 'Debt'
-    UNION ALL SELECT 'Donations'
-    UNION ALL SELECT 'Education'
-    UNION ALL SELECT 'Entertainment'
-    UNION ALL SELECT 'Financial'
-    UNION ALL SELECT 'Food'
-    UNION ALL SELECT 'Healthcare'
-    UNION ALL SELECT 'Housing'
-    UNION ALL SELECT 'Insurance'
-    UNION ALL SELECT 'Legal'
-    UNION ALL SELECT 'Petcare'
-    UNION ALL SELECT 'Transportation'
-    UNION ALL SELECT 'Utilities'
+INSERT  INTO Category (CategoryId, Name)
+    SELECT 1, 'Childcare'
+    UNION ALL SELECT 2, 'Clothing'
+    UNION ALL SELECT 3, 'Debt'
+    UNION ALL SELECT 4, 'Donations'
+    UNION ALL SELECT 5, 'Education'
+    UNION ALL SELECT 6, 'Entertainment'
+    UNION ALL SELECT 7, 'Financial'
+    UNION ALL SELECT 8, 'Food'
+    UNION ALL SELECT 9, 'Healthcare'
+    UNION ALL SELECT 10, 'Housing'
+    UNION ALL SELECT 11, 'Insurance'
+    UNION ALL SELECT 12, 'Legal'
+    UNION ALL SELECT 13, 'Petcare'
+    UNION ALL SELECT 14, 'Transportation'
+    UNION ALL SELECT 15, 'Utilities'
 WHERE NOT EXISTS (SELECT 1 FROM Category);
 EOF
     echo "Database and tables created successfully."
