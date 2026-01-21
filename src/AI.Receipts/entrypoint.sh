@@ -25,7 +25,6 @@ CREATE TABLE IF NOT EXISTS Receipt (
     City TEXT NOT NULL CHECK(length(City) <= 100),
     Country TEXT NOT NULL CHECK(length(Country) <= 100),
     ImageUrl TEXT NOT NULL CHECK(length(ImageUrl) <= 500),
-    Amount REAL NOT NULL CHECK(Amount >= 1),
     Tax REAL NOT NULL CHECK(Tax >= 1),
     Total REAL NOT NULL CHECK(Total >= 1),
     PurchaseDate TEXT NOT NULL,

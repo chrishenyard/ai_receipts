@@ -44,9 +44,6 @@ public class Receipt
     public string ImageUrl { get; set; } = null!;
 
     [Range(1, int.MaxValue)]
-    public decimal Amount { get; set; }
-
-    [Range(1, int.MaxValue)]
     public decimal Tax { get; set; }
 
     [Range(1, int.MaxValue)]

@@ -7,14 +7,9 @@ public interface IOllamaClientFactory
     OllamaApiClient CreateClient();
 }
 
-public class OllamaClientFactory : IOllamaClientFactory
+public class OllamaClientFactory(IHttpClientFactory httpClientFactory) : IOllamaClientFactory
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-
-    public OllamaClientFactory(IHttpClientFactory httpClientFactory)
-    {
-        _httpClientFactory = httpClientFactory;
-    }
+    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
 
     public OllamaApiClient CreateClient()
     {
