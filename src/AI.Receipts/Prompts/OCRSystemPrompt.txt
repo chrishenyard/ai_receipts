@@ -9,6 +9,7 @@ EXTRACTION RULES:
 - Do NOT summarize, interpret, or normalize values
 - Do NOT correct misspellings or formatting errors
 - Replace unreadable text with [UNREADABLE]
+- Tax and total amounts are important; ensure they are accurately captured
 
 FIELD POPULATION RULES:
 Only populate fields if you can clearly identify the information from the receipt. If a field cannot be determined with confidence, use these default values:

@@ -10,7 +10,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Prompts\OCRUserPrompt.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="Prompts\OCRSystemPrompt.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Prompts\OCRUserPrompt.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

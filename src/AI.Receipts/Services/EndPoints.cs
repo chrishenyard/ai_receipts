@@ -98,6 +98,7 @@ public class EndPoints
 
             var ollamaSettings = options.Value;
             var ocrSystemPrompt = await System.IO.File.ReadAllTextAsync("Prompts/OCRSystemPrompt.txt", cancellationToken);
+            var ocrUserPrompt = await System.IO.File.ReadAllTextAsync("Prompts/OCRUserPrompt.txt", cancellationToken);
 
             try
             {
@@ -121,7 +122,7 @@ public class EndPoints
                         new()
                         {
                             Role = ChatRole.User,
-                            Content = "Analyze this receipt image and extract the information according to the system instructions. Return only valid JSON.",
+                            Content = ocrUserPrompt,
                             Images = [base64Image]
                         }
                     ],

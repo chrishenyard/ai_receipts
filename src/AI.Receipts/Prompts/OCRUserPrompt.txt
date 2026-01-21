@@ -1,0 +1,1 @@
+﻿Extract and structure the receipt data from this image.
