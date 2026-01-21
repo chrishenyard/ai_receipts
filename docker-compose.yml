@@ -21,11 +21,11 @@ services:
         condition: service_started
       openwebui:
         condition: service_started
+    user: "1654:1654"
     volumes:
       - ai_receipts_logs:/app/logs/ai_receipts/
       - ai_receipts_sqlite:/app/db/
       - ai_receipts_uploads:/app/uploads/
-    user: "1654:1654"
 
   ollama:
     image: ollama/ollama
