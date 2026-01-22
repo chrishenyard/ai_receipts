@@ -1,5 +1,6 @@
 ﻿using AI.Receipts.Data;
 using AI.Receipts.IO;
+using AI.Receipts.Models;
 using AI.Receipts.Settings;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
@@ -201,6 +202,42 @@ public class EndPoints
         {
             var tokens = antiforgery.GetAndStoreTokens(httpContext);
             return Results.Ok(new { token = tokens.RequestToken });
+        });
+
+
+        app.MapPost("/api/receipt/create", async (
+        [FromBody] Receipt receipt,
+        AiReceiptsDbContext context,
+        ILogger<EndPoints> logger,
+        CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                // Set timestamps
+                receipt.CreatedAt = DateTime.UtcNow;
+                receipt.UpdatedAt = DateTime.UtcNow;
+
+                // Validate category exists
+                var categoryExists = await context.Categories
+                    .AnyAsync(c => c.CategoryId == receipt.CategoryId, cancellationToken);
+
+                if (!categoryExists && receipt.CategoryId != 0)
+                {
+                    return Results.BadRequest($"Category with ID {receipt.CategoryId} does not exist");
+                }
+
+                context.Receipts.Add(receipt);
+                await context.SaveChangesAsync(cancellationToken);
+
+                logger.LogInformation("Receipt saved successfully with ID: {ReceiptId}", receipt.ReceiptId);
+                return Results.Created($"/api/receipts/{receipt.ReceiptId}", receipt);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error saving receipt");
+                return Results.Problem("Failed to save receipt",
+                    statusCode: StatusCodes.Status500InternalServerError);
+            }
         });
     }
 

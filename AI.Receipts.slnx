@@ -6,8 +6,12 @@
     <File Path="Docker-Compose-Up.ps1" />
     <File Path="README.md" />
   </Folder>
-  <Project Path="src/AI.Receipts/AI.Receipts.csproj" />
   <Project Path="docker-compose.dcproj">
     <Build />
   </Project>
+  <Project Path="src/AI.Receipts.Web/AI.Receipts.Web.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="src/AI.Receipts/AI.Receipts.csproj" />
 </Solution>
