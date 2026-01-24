@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import axios, { AxiosError } from 'axios';
+import React, { useState, useEffect } from 'react';
+import { AxiosError } from 'axios';
+import apiClient, { fetchCsrfToken } from '../services/api';
 import ImageUpload from './ImageUpload';
 import ReceiptForm from './ReceiptForm';
 import './ReceiptScanner.css';
@@ -16,14 +17,18 @@ const ReceiptScanner: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
 
-  // Load categories on mount
-  React.useEffect(() => {
-    loadCategories();
+  // Load categories and CSRF token on mount
+  useEffect(() => {
+    const initialize = async () => {
+      await fetchCsrfToken(); // Fetch CSRF token first
+      await loadCategories();
+    };
+    initialize();
   }, []);
 
   const loadCategories = async (): Promise<void> => {
     try {
-      const response = await axios.get<Category[]>('/api/Categories');
+      const response = await apiClient.get<Category[]>('/api/Categories');
       setCategories(response.data);
     } catch (err) {
       console.error('Failed to load categories:', err);
@@ -59,7 +64,7 @@ const ReceiptScanner: React.FC = () => {
       const formData = new FormData();
       formData.append('file', imageFile);
 
-      const response = await axios.post<ReceiptFormData>('/api/receipt', formData, {
+      const response = await apiClient.post<ReceiptFormData>('/api/receipt', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -67,13 +72,22 @@ const ReceiptScanner: React.FC = () => {
 
       setReceiptData(response.data);
     } catch (err) {
-      console.error('Error scanning receipt:', err);
       const axiosError = err as AxiosError<ApiError>;
-      setError(
-        axiosError.response?.data?.detail || 
-        (typeof axiosError.response?.data === 'string' ? axiosError.response.data : '') ||
-        'Failed to scan receipt. Please try again.'
-      );
+      
+      let errorMessage = 'Failed to scan receipt. Please try again.';
+      
+      if (axiosError.response) {
+        errorMessage = axiosError.response.data?.detail || 
+                      axiosError.response.data?.title ||
+                      (typeof axiosError.response.data === 'string' ? axiosError.response.data : '') ||
+                      `Server error: ${axiosError.response.status}`;
+      } else if (axiosError.request) {
+        errorMessage = 'No response from server. Is the API running at http://localhost:9020?';
+      } else {
+        errorMessage = `Request error: ${axiosError.message}`;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -94,13 +108,10 @@ const ReceiptScanner: React.FC = () => {
         imageUrl: data.imageUrl || imageFile?.name || '',
       };
 
-      await axios.post('/api/receipt/create', receiptPayload, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      await apiClient.post('/api/receipt/create', receiptPayload);
 
       setSuccess(true);
+      
       // Reset form after successful save
       setTimeout(() => {
         setImageFile(null);
@@ -109,13 +120,18 @@ const ReceiptScanner: React.FC = () => {
         setSuccess(false);
       }, 2000);
     } catch (err) {
-      console.error('Error saving receipt:', err);
       const axiosError = err as AxiosError<ApiError>;
-      setError(
-        axiosError.response?.data?.detail || 
-        (typeof axiosError.response?.data === 'string' ? axiosError.response.data : '') ||
-        'Failed to save receipt. Please try again.'
-      );
+      
+      let errorMessage = 'Failed to save receipt. Please try again.';
+      
+      if (axiosError.response) {
+        errorMessage = axiosError.response.data?.detail || 
+                      axiosError.response.data?.title ||
+                      (typeof axiosError.response.data === 'string' ? axiosError.response.data : '') ||
+                      `Server error: ${axiosError.response.status}`;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

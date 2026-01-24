@@ -19,6 +19,20 @@ public class EndPoints
     {
         app.MapGet("/", () => "AI Receipts is running...");
 
+        // Antiforgery token endpoint - sets cookie automatically
+        app.MapGet("/api/antiforgery/token", (IAntiforgery antiforgery, HttpContext context) =>
+        {
+            var tokens = antiforgery.GetAndStoreTokens(context);
+            context.Response.Cookies.Append("XSRF-TOKEN", tokens.RequestToken!,
+                new CookieOptions
+                {
+                    HttpOnly = false, // Allow JavaScript to read
+                    Secure = context.Request.IsHttps,
+                    SameSite = SameSiteMode.Strict
+                });
+            return Results.Ok(new { });
+        });
+
         app.MapGet("/debug/config", (IOptions<OllamaSettings> options) =>
         {
             var settings = options.Value;
@@ -198,18 +212,11 @@ public class EndPoints
             return Results.Ok(categories);
         });
 
-        app.MapGet("/generate-token", (IAntiforgery antiforgery, HttpContext httpContext) =>
-        {
-            var tokens = antiforgery.GetAndStoreTokens(httpContext);
-            return Results.Ok(new { token = tokens.RequestToken });
-        });
-
-
         app.MapPost("/api/receipt/create", async (
-        [FromBody] Receipt receipt,
-        AiReceiptsDbContext context,
-        ILogger<EndPoints> logger,
-        CancellationToken cancellationToken) =>
+            [FromBody] Receipt receipt,
+            AiReceiptsDbContext context,
+            ILogger<EndPoints> logger,
+            CancellationToken cancellationToken) =>
         {
             try
             {

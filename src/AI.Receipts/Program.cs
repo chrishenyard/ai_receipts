@@ -28,17 +28,14 @@ builder
 var configuration = builder.Configuration;
 
 builder.Services
-    .AddAntiforgery(options =>
-    {
-        options.HeaderName = "X-XSRF-TOKEN";
-    })
+    .ConfigureAntiForgery()
     .AddOpenApi()
     .AddTelemetry(configuration)
     .AddExceptionHandler<GlobalExceptionHandler>()
     .AddProblemDetails()
     .AddSettings()
     .AddHttp(configuration)
-    .AddServices()
+    .AddServices(configuration)
     .AddDbContext(configuration);
 
 var app = builder.Build();

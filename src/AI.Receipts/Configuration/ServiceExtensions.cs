@@ -68,7 +68,26 @@ public static class ServiceExtensions
         return services;
     }
 
-    public static IServiceCollection AddServices(this IServiceCollection services)
+    public static IServiceCollection ConfigureAntiForgery(this IServiceCollection services)
+    {
+        var isDevelopment = services
+            .BuildServiceProvider()
+            .GetRequiredService<IWebHostEnvironment>()
+            .IsDevelopment();
+
+        services.AddAntiforgery(options =>
+        {
+            options.HeaderName = "X-XSRF-TOKEN";
+            options.Cookie.Name = "X-XSRF-TOKEN";
+            options.Cookie.HttpOnly = !isDevelopment;
+            options.Cookie.SecurePolicy = isDevelopment ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+            options.Cookie.SameSite = SameSiteMode.Strict;
+        });
+
+        return services;
+    }
+
+    public static IServiceCollection AddServices(this IServiceCollection services, IConfiguration config)
     {
         services.AddScoped<IOllamaClientFactory, OllamaClientFactory>();
         services.AddScoped(sp =>
@@ -82,6 +101,19 @@ public static class ServiceExtensions
                 .AddDataProtection()
                 .PersistKeysToFileSystem(new DirectoryInfo("/app/DataProtectionKeys/"))
                 .SetApplicationName("AI.Receipts");
+
+        services.AddCors(options =>
+        {
+            options.AddPolicy("AllowReactApp", policy =>
+            {
+                var corsSettings = config.GetSection("CorsSettings");
+                var allowedOrigins = corsSettings.GetValue<string>("AllowedOrigins")?.Split(',') ?? [];
+                policy.WithOrigins(allowedOrigins)
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials();
+            });
+        });
 
         return services;
     }
