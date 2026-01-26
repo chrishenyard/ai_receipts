@@ -18,6 +18,7 @@ export interface Receipt {
 }
 
 export interface ReceiptFormData {
+  receiptId?: number;
   extractedText: string;
   title: string;
   description: string;

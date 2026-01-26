@@ -17,20 +17,20 @@ CREATE TABLE IF NOT EXISTS Category (
 -- Create Receipt table
 CREATE TABLE IF NOT EXISTS Receipt (
     ReceiptId INTEGER PRIMARY KEY AUTOINCREMENT,
-    ExtractedText TEXT NOT NULL CHECK(length(ExtractedText) <= 4096),
-    Title TEXT NOT NULL CHECK(length(Title) <= 100),
-    Description TEXT NOT NULL CHECK(length(Description) <= 4096),
-    Vendor TEXT NOT NULL CHECK(length(Vendor) <= 100),
-    State TEXT NOT NULL CHECK(length(State) <= 100),
-    City TEXT NOT NULL CHECK(length(City) <= 100),
-    Country TEXT NOT NULL CHECK(length(Country) <= 100),
+    ExtractedText TEXT NULL CHECK(length(ExtractedText) <= 4096),
+    Title TEXT NULL CHECK(length(Title) <= 100),
+    Description TEXT NULL CHECK(length(Description) <= 4096),
+    Vendor TEXT NULL CHECK(length(Vendor) <= 100),
+    State TEXT NULL CHECK(length(State) <= 100),
+    City TEXT NULL CHECK(length(City) <= 100),
+    Country TEXT NULL CHECK(length(Country) <= 100),
     ImageUrl TEXT NOT NULL CHECK(length(ImageUrl) <= 500),
-    Tax REAL NOT NULL CHECK(Tax >= 1),
-    Total REAL NOT NULL CHECK(Total >= 1),
-    PurchaseDate TEXT NOT NULL,
+    Tax REAL NOT NULL CHECK(Tax >= 0),
+    Total REAL NOT NULL CHECK(Total >= 0),
+    PurchaseDate TEXT NULL,
     CreatedAt TEXT NOT NULL,
     UpdatedAt TEXT NOT NULL,
-    CategoryId INTEGER NOT NULL,
+    CategoryId INTEGER NULL,
     FOREIGN KEY (CategoryId) REFERENCES Category(CategoryId)
 );
 

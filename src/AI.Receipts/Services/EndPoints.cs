@@ -1,6 +1,7 @@
 ﻿using AI.Receipts.Data;
 using AI.Receipts.IO;
 using AI.Receipts.Models;
+using AI.Receipts.Serializers;
 using AI.Receipts.Settings;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +10,6 @@ using Microsoft.Extensions.Options;
 using OllamaSharp;
 using OllamaSharp.Models.Chat;
 using System.Text;
-using System.Text.Json;
 
 namespace AI.Receipts.Services;
 
@@ -97,6 +97,7 @@ public class EndPoints
 
         app.MapPost("/api/receipt", async (
             HttpRequest request,
+            AiReceiptsDbContext context,
             OllamaApiClient ollamaClient,
             [FromForm] IFormFile file,
             IFileSystem fileSystem,
@@ -172,18 +173,18 @@ public class EndPoints
                 logger.LogInformation("Successfully extracted text, length: {Length} characters", output.Length);
                 logger.LogDebug("Extracted JSON: {Json}", output);
 
-                // Validate JSON
-                try
+                var deserialize = Json.TryDeserialize<Receipt>(output, out Receipt? receipt);
+                if (!deserialize || receipt == null)
                 {
-                    using var jsonDoc = JsonDocument.Parse(output);
-                    return Results.Content(output, "application/json", Encoding.UTF8);
-                }
-                catch (JsonException jsonEx)
-                {
-                    logger.LogError(jsonEx, "Invalid JSON returned from Ollama: {Output}", output);
+                    logger.LogInformation("Invalid JSON returned from Ollama: {Output}", output);
                     return Results.Problem("The extracted data is not valid JSON",
                         statusCode: StatusCodes.Status500InternalServerError);
                 }
+
+                receipt.ImageUrl = filePath;
+                context.Receipts.Add(receipt);
+                await context.SaveChangesAsync(cancellationToken);
+                return Results.Json(receipt);
             }
             catch (HttpRequestException ex)
             {
