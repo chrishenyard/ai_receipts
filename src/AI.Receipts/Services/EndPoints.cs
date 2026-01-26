@@ -3,6 +3,7 @@ using AI.Receipts.IO;
 using AI.Receipts.Models;
 using AI.Receipts.Serializers;
 using AI.Receipts.Settings;
+using FluentValidation;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -173,8 +174,8 @@ public class EndPoints
                 logger.LogInformation("Successfully extracted text, length: {Length} characters", output.Length);
                 logger.LogDebug("Extracted JSON: {Json}", output);
 
-                var deserialize = Json.TryDeserialize<Receipt>(output, out Receipt? receipt);
-                if (!deserialize || receipt == null)
+                _ = Json.TryDeserialize(output, out Receipt? receipt);
+                if (receipt == null)
                 {
                     logger.LogInformation("Invalid JSON returned from Ollama: {Output}", output);
                     return Results.Problem("The extracted data is not valid JSON",
@@ -216,36 +217,48 @@ public class EndPoints
         app.MapPost("/api/receipt/create", async (
             [FromBody] Receipt receipt,
             AiReceiptsDbContext context,
+            IValidator<Receipt> validator,
             ILogger<EndPoints> logger,
             CancellationToken cancellationToken) =>
         {
-            try
+            var validationResult = await validator.ValidateAsync(receipt, cancellationToken);
+
+            if (!validationResult.IsValid)
             {
-                // Set timestamps
-                receipt.CreatedAt = DateTime.UtcNow;
-                receipt.UpdatedAt = DateTime.UtcNow;
-
-                // Validate category exists
-                var categoryExists = await context.Categories
-                    .AnyAsync(c => c.CategoryId == receipt.CategoryId, cancellationToken);
-
-                if (!categoryExists && receipt.CategoryId != 0)
-                {
-                    return Results.BadRequest($"Category with ID {receipt.CategoryId} does not exist");
-                }
-
-                context.Receipts.Add(receipt);
-                await context.SaveChangesAsync(cancellationToken);
-
-                logger.LogInformation("Receipt saved successfully with ID: {ReceiptId}", receipt.ReceiptId);
-                return Results.Created($"/api/receipts/{receipt.ReceiptId}", receipt);
+                var errors = validationResult.Errors.Select(e => e.ErrorMessage);
+                return Results.BadRequest(new { Errors = errors });
             }
-            catch (Exception ex)
+
+            receipt.CreatedAt = DateTime.UtcNow;
+            receipt.UpdatedAt = DateTime.UtcNow;
+
+            var categoryExists = await context.Categories
+                .AnyAsync(c => c.CategoryId == receipt.CategoryId, cancellationToken);
+
+            if (!categoryExists && receipt.CategoryId != 0)
             {
-                logger.LogError(ex, "Error saving receipt");
-                return Results.Problem("Failed to save receipt",
-                    statusCode: StatusCodes.Status500InternalServerError);
+                return Results.BadRequest($"Category with ID {receipt.CategoryId} does not exist");
             }
+
+            await context.Receipts
+                .Where(r => r.ReceiptId == receipt.ReceiptId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(r => r.ExtractedText, receipt.ExtractedText)
+                    .SetProperty(r => r.Title, receipt.Title)
+                    .SetProperty(r => r.Description, receipt.Description)
+                    .SetProperty(r => r.Vendor, receipt.Vendor)
+                    .SetProperty(r => r.State, receipt.State)
+                    .SetProperty(r => r.City, receipt.City)
+                    .SetProperty(r => r.Country, receipt.Country)
+                    .SetProperty(r => r.Tax, receipt.Tax)
+                    .SetProperty(r => r.Total, receipt.Total)
+                    .SetProperty(r => r.PurchaseDate, receipt.PurchaseDate)
+                    .SetProperty(r => r.UpdatedAt, DateTime.UtcNow)
+                    .SetProperty(r => r.CategoryId, receipt.CategoryId),
+                    cancellationToken: cancellationToken);
+
+            logger.LogInformation("Receipt saved successfully with ID: {ReceiptId}", receipt.ReceiptId);
+            return Results.Created($"/api/receipts/{receipt.ReceiptId}", receipt);
         });
     }
 

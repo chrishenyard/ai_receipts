@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { AxiosError } from 'axios';
 import apiClient, { fetchCsrfToken } from '../services/api';
 import ImageUpload from './ImageUpload';
 import ReceiptForm from './ReceiptForm';
 import './ReceiptScanner.css';
 import { ReceiptFormData } from '../types/Receipt';
 import { Category } from '../types/Category';
-import { ApiError } from '../types/ApiResponse';
+import { getErrorMessage } from '../utils/errorHandler';
 
 const ReceiptScanner: React.FC = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -72,21 +71,7 @@ const ReceiptScanner: React.FC = () => {
 
       setReceiptData(response.data);
     } catch (err) {
-      const axiosError = err as AxiosError<ApiError>;
-      
-      let errorMessage = 'Failed to scan receipt. Please try again.';
-      
-      if (axiosError.response) {
-        errorMessage = axiosError.response.data?.detail || 
-                      axiosError.response.data?.title ||
-                      (typeof axiosError.response.data === 'string' ? axiosError.response.data : '') ||
-                      `Server error: ${axiosError.response.status}`;
-      } else if (axiosError.request) {
-        errorMessage = 'No response from server. Is the API running at http://localhost:9020?';
-      } else {
-        errorMessage = `Request error: ${axiosError.message}`;
-      }
-      
+      const errorMessage = getErrorMessage(err, 'Failed to scan receipt. Please try again.');
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -120,17 +105,7 @@ const ReceiptScanner: React.FC = () => {
         setSuccess(false);
       }, 2000);
     } catch (err) {
-      const axiosError = err as AxiosError<ApiError>;
-      
-      let errorMessage = 'Failed to save receipt. Please try again.';
-      
-      if (axiosError.response) {
-        errorMessage = axiosError.response.data?.detail || 
-                      axiosError.response.data?.title ||
-                      (typeof axiosError.response.data === 'string' ? axiosError.response.data : '') ||
-                      `Server error: ${axiosError.response.status}`;
-      }
-      
+      const errorMessage = getErrorMessage(err, 'Failed to save receipt. Please try again.');
       setError(errorMessage);
     } finally {
       setLoading(false);

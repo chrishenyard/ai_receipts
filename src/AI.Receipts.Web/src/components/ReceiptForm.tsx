@@ -38,6 +38,7 @@ const ReceiptForm: React.FC<ReceiptFormProps> = ({
     useEffect(() => {
         if (data) {
             setFormData({
+                receiptId: data.receiptId || 0,
                 extractedText: data.extractedText || '',
                 title: data.title || '',
                 description: data.description || '',

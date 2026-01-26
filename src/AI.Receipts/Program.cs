@@ -1,6 +1,7 @@
 using AI.Receipts;
 using AI.Receipts.Configuration;
 using AI.Receipts.Services;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -31,6 +32,7 @@ builder.Services
     .ConfigureAntiForgery()
     .AddOpenApi()
     .AddTelemetry(configuration)
+    .AddValidatorsFromAssembly(typeof(Program).Assembly, includeInternalTypes: true)
     .AddExceptionHandler<GlobalExceptionHandler>()
     .AddProblemDetails()
     .AddSettings()
