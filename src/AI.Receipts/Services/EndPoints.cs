@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using OllamaSharp;
+using OllamaSharp.Models;
 using OllamaSharp.Models.Chat;
 using System.Text;
 
@@ -50,27 +51,19 @@ public class EndPoints
             IOptions<OllamaSettings> options,
             ILogger<EndPoints> logger) =>
         {
-            try
-            {
-                var httpClient = httpClientFactory.CreateClient("ollama");
-                logger.LogInformation("Testing connection to Ollama at {BaseAddress}", httpClient.BaseAddress);
+            var httpClient = httpClientFactory.CreateClient("ollama");
+            logger.LogInformation("Testing connection to Ollama at {BaseAddress}", httpClient.BaseAddress);
 
-                var response = await httpClient.GetAsync("/api/tags");
-                var content = await response.Content.ReadAsStringAsync();
+            var response = await httpClient.GetAsync("/api/tags");
+            var content = await response.Content.ReadAsStringAsync();
 
-                return Results.Ok(new
-                {
-                    StatusCode = (int)response.StatusCode,
-                    IsSuccess = response.IsSuccessStatusCode,
-                    Content = content,
-                    BaseAddress = httpClient.BaseAddress?.ToString()
-                });
-            }
-            catch (Exception ex)
+            return Results.Ok(new
             {
-                logger.LogError(ex, "Failed to connect to Ollama");
-                return Results.Problem($"Connection failed: {ex.Message}", statusCode: 503);
-            }
+                StatusCode = (int)response.StatusCode,
+                IsSuccess = response.IsSuccessStatusCode,
+                Content = content,
+                BaseAddress = httpClient.BaseAddress?.ToString()
+            });
         });
 
         app.MapGet("/health/ollama", async (
@@ -78,22 +71,9 @@ public class EndPoints
             ILogger<EndPoints> logger,
             IOptions<OllamaSettings> options) =>
         {
-            try
-            {
-                logger.LogInformation("Checking Ollama health at {Url}", options.Value.Url);
-                var models = await ollamaClient.ListLocalModelsAsync();
-                return Results.Ok(new { status = "healthy", models = models.Select(m => m.Name) });
-            }
-            catch (HttpRequestException ex)
-            {
-                logger.LogError(ex, "Ollama HTTP request failed");
-                return Results.Problem($"Ollama service unavailable: {ex.Message}", statusCode: 503);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Ollama health check failed");
-                return Results.Problem($"Ollama service unavailable: {ex.Message}", statusCode: 503);
-            }
+            logger.LogInformation("Checking Ollama health at {Url}", options.Value.Url);
+            var models = await ollamaClient.ListLocalModelsAsync();
+            return Results.Ok(new { status = "healthy", models = models.Select(m => m.Name) });
         });
 
         app.MapPost("/api/receipt", async (
@@ -130,6 +110,11 @@ public class EndPoints
 
                 logger.LogInformation("Sending request to Ollama at {Url} with model: {Model}", ollamaSettings.Url, ollamaSettings.VisionModel);
 
+                var requestOptions = new RequestOptions
+                {
+                    NumCtx = ollamaSettings.ContextWindowSize
+                };
+
                 var chatRequest = new ChatRequest
                 {
                     Model = ollamaSettings.VisionModel,
@@ -144,7 +129,8 @@ public class EndPoints
                         }
                     ],
                     Stream = true,
-                    Format = "json"
+                    Format = "json",
+                    Options = requestOptions
                 };
 
                 var chatResponse = ollamaClient.ChatAsync(chatRequest, cancellationToken: cancellationToken);

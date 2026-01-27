@@ -11,4 +11,5 @@ public class OllamaSettings
     [Required]
     public string VisionModel { get; set; } = null!;
     public int TimeoutFromMinutes { get; set; } = 5;
+    public int ContextWindowSize { get; set; } = 2048;
 }
