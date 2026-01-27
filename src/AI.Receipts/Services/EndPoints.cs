@@ -97,101 +97,79 @@ public class EndPoints
             var ocrSystemPrompt = await System.IO.File.ReadAllTextAsync("Prompts/OCRSystemPrompt.txt", cancellationToken);
             var ocrUserPrompt = await System.IO.File.ReadAllTextAsync("Prompts/OCRUserPrompt.txt", cancellationToken);
 
-            try
+            using var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream, cancellationToken);
+            var imageBytes = memoryStream.ToArray();
+            var filePath = await fileSystem.SaveAsync(file.FileName, imageBytes, cancellationToken);
+
+            logger.LogInformation("Processing receipt image, size: {Size} bytes, saved to: {Path}", imageBytes.Length, filePath);
+
+            var base64Image = Convert.ToBase64String(imageBytes);
+
+            logger.LogInformation("Sending request to Ollama at {Url} with model: {Model}", ollamaSettings.Url, ollamaSettings.VisionModel);
+
+            var requestOptions = new RequestOptions
             {
-                using var memoryStream = new MemoryStream();
-                await file.CopyToAsync(memoryStream, cancellationToken);
-                var imageBytes = memoryStream.ToArray();
-                var filePath = await fileSystem.SaveAsync(file.FileName, imageBytes, cancellationToken);
+                NumCtx = ollamaSettings.ContextWindowSize
+            };
 
-                logger.LogInformation("Processing receipt image, size: {Size} bytes, saved to: {Path}", imageBytes.Length, filePath);
-
-                var base64Image = Convert.ToBase64String(imageBytes);
-
-                logger.LogInformation("Sending request to Ollama at {Url} with model: {Model}", ollamaSettings.Url, ollamaSettings.VisionModel);
-
-                var requestOptions = new RequestOptions
-                {
-                    NumCtx = ollamaSettings.ContextWindowSize
-                };
-
-                var chatRequest = new ChatRequest
-                {
-                    Model = ollamaSettings.VisionModel,
-                    Messages =
-                    [
-                        new (ChatRole.System, ocrSystemPrompt),
+            var chatRequest = new ChatRequest
+            {
+                Model = ollamaSettings.VisionModel,
+                Messages =
+                [
+                    new (ChatRole.System, ocrSystemPrompt),
                         new()
                         {
                             Role = ChatRole.User,
                             Content = ocrUserPrompt,
                             Images = [base64Image]
                         }
-                    ],
-                    Stream = true,
-                    Format = "json",
-                    Options = requestOptions
-                };
+                ],
+                Stream = true,
+                Format = "json",
+                Options = requestOptions
+            };
 
-                var chatResponse = ollamaClient.ChatAsync(chatRequest, cancellationToken: cancellationToken);
-                var message = new StringBuilder();
+            var chatResponse = ollamaClient.ChatAsync(chatRequest, cancellationToken: cancellationToken);
+            var message = new StringBuilder();
 
-                await foreach (var response in chatResponse)
-                {
-                    if (string.IsNullOrEmpty(response?.Message?.Content))
-                    {
-                        continue;
-                    }
-                    message.Append(response?.Message?.Content);
-                }
-
-                var output = message.ToString().Trim();
-
-                if (string.IsNullOrEmpty(output))
-                {
-                    logger.LogWarning("No text extracted from the image");
-                    return Results.Problem("No text extracted from the image",
-                        statusCode: StatusCodes.Status500InternalServerError);
-                }
-
-                // Clean up the output - remove markdown code blocks if present
-                output = output.Replace("```json", "").Replace("```", "").Trim();
-
-                logger.LogInformation("Successfully extracted text, length: {Length} characters", output.Length);
-                logger.LogDebug("Extracted JSON: {Json}", output);
-
-                _ = Json.TryDeserialize(output, out Receipt? receipt);
-                if (receipt == null)
-                {
-                    logger.LogInformation("Invalid JSON returned from Ollama: {Output}", output);
-                    return Results.Problem("The extracted data is not valid JSON",
-                        statusCode: StatusCodes.Status500InternalServerError);
-                }
-
-                receipt.ImageUrl = filePath;
-                context.Receipts.Add(receipt);
-                await context.SaveChangesAsync(cancellationToken);
-                return Results.Json(receipt);
-            }
-            catch (HttpRequestException ex)
+            await foreach (var response in chatResponse)
             {
-                logger.LogError(ex, "HTTP error connecting to Ollama at {Url}. StatusCode: {StatusCode}",
-                    ollamaSettings.Url, ex.StatusCode);
-                return Results.Problem($"Failed to connect to Ollama service: {ex.Message}",
-                    statusCode: StatusCodes.Status503ServiceUnavailable);
+                if (string.IsNullOrEmpty(response?.Message?.Content))
+                {
+                    continue;
+                }
+                message.Append(response?.Message?.Content);
             }
-            catch (TaskCanceledException ex)
+
+            var output = message.ToString().Trim();
+
+            if (string.IsNullOrEmpty(output))
             {
-                logger.LogError(ex, "Request to Ollama timed out after {Timeout} minutes", ollamaSettings.TimeoutFromMinutes);
-                return Results.Problem("Request to Ollama timed out",
-                    statusCode: StatusCodes.Status504GatewayTimeout);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error processing receipt. Exception type: {Type}", ex.GetType().Name);
-                return Results.Problem($"An error occurred processing receipt: {ex.Message}",
+                logger.LogWarning("No text extracted from the image");
+                return Results.Problem("No text extracted from the image",
                     statusCode: StatusCodes.Status500InternalServerError);
             }
+
+            // Clean up the output - remove markdown code blocks if present
+            output = output.Replace("```json", "").Replace("```", "").Trim();
+
+            logger.LogInformation("Successfully extracted text, length: {Length} characters", output.Length);
+            logger.LogDebug("Extracted JSON: {Json}", output);
+
+            _ = Json.TryDeserialize(output, out Receipt? receipt);
+            if (receipt == null)
+            {
+                logger.LogInformation("Invalid JSON returned from Ollama: {Output}", output);
+                return Results.Problem("The extracted data is not valid JSON",
+                    statusCode: StatusCodes.Status500InternalServerError);
+            }
+
+            receipt.ImageUrl = filePath;
+            context.Receipts.Add(receipt);
+            await context.SaveChangesAsync(cancellationToken);
+            return Results.Json(receipt);
         });
 
         app.MapGet("/api/Categories", async (AiReceiptsDbContext context) =>

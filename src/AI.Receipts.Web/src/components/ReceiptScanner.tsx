@@ -30,8 +30,9 @@ const ReceiptScanner: React.FC = () => {
       const response = await apiClient.get<Category[]>('/api/Categories');
       setCategories(response.data);
     } catch (err) {
+      const errorMessage = getErrorMessage(err, 'Failed to load categories.');
+      setError(errorMessage);
       console.error('Failed to load categories:', err);
-      setError('Failed to load categories');
     }
   };
 
