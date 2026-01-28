@@ -3,6 +3,7 @@ using AI.Receipts.IO;
 using AI.Receipts.Models;
 using AI.Receipts.Serializers;
 using AI.Receipts.Settings;
+using AI.Receipts.Utils;
 using FluentValidation;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,7 @@ using OllamaSharp;
 using OllamaSharp.Models;
 using OllamaSharp.Models.Chat;
 using System.Text;
+using System.Text.Json;
 
 namespace AI.Receipts.Services;
 
@@ -158,15 +160,39 @@ public class EndPoints
             logger.LogInformation("Successfully extracted text, length: {Length} characters", output.Length);
             logger.LogDebug("Extracted JSON: {Json}", output);
 
+
             _ = Json.TryDeserialize(output, out Receipt? receipt);
             if (receipt == null)
             {
-                logger.LogInformation("Invalid JSON returned from Ollama: {Output}", output);
-                return Results.Problem("The extracted data is not valid JSON",
+                logger.LogWarning("Failed to deserialize Ollama output into Receipt. Attempting diagnostic parse.");
+
+                try
+                {
+                    using var doc = JsonDocument.Parse(output);
+                    logger.LogInformation(
+                        "JSON is syntactically valid but cannot be mapped to Receipt. RootKind={RootKind}, Properties={Properties}",
+                        doc.RootElement.ValueKind,
+                        string.Join(", ", doc.RootElement.EnumerateObject().Select(p => p.Name)));
+
+                    receipt = JsonDocumentToReceipt(doc);
+                    NormalizeReceiptFields(receipt, filePath);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex,
+                        "Scrubbed output is not valid JSON. Output={Preview}",
+                        output);
+                }
+
+                return Results.Problem(
+                    "The extracted data is not valid JSON for the expected Receipt shape.",
                     statusCode: StatusCodes.Status500InternalServerError);
             }
+            else
+            {
+                NormalizeReceiptFields(receipt, filePath);
+            }
 
-            receipt.ImageUrl = filePath;
             context.Receipts.Add(receipt);
             await context.SaveChangesAsync(cancellationToken);
             return Results.Json(receipt);
@@ -224,6 +250,39 @@ public class EndPoints
             logger.LogInformation("Receipt saved successfully with ID: {ReceiptId}", receipt.ReceiptId);
             return Results.Created($"/api/receipts/{receipt.ReceiptId}", receipt);
         });
+    }
+
+    private static Receipt JsonDocumentToReceipt(JsonDocument doc)
+    {
+        var receipt = new Receipt();
+        var root = doc.RootElement;
+        receipt.ExtractedText = root.GetProperty("ExtractedText").GetString() ?? string.Empty;
+        receipt.Title = root.GetProperty("Title").GetString() ?? string.Empty;
+        receipt.Description = root.GetProperty("Description").GetString() ?? string.Empty;
+        receipt.Vendor = root.GetProperty("Vendor").GetString() ?? string.Empty;
+        receipt.State = root.GetProperty("State").GetString() ?? string.Empty;
+        receipt.City = root.GetProperty("City").GetString() ?? string.Empty;
+        receipt.Country = root.GetProperty("Country").GetString() ?? string.Empty;
+        receipt.Tax = root.GetProperty("Tax").GetDecimal();
+        receipt.Total = root.GetProperty("Total").GetDecimal();
+        receipt.PurchaseDate = Dates.TryDate(root.GetProperty("PurchaseDate").GetString() ?? string.Empty);
+        receipt.CategoryId = root.GetProperty("CategoryId").GetInt32();
+        return receipt;
+    }
+
+    private static void NormalizeReceiptFields(Receipt receipt, string filePath)
+    {
+        receipt.ExtractedText = receipt.ExtractedText.Truncate(4096);
+        receipt.Title = receipt.Title.Truncate(100);
+        receipt.Description = receipt.Description.Truncate(4096);
+        receipt.Vendor = receipt.Vendor.Truncate(100);
+        receipt.State = receipt.State.Truncate(100);
+        receipt.City = receipt.City.Truncate(100);
+        receipt.Country = receipt.Country.Truncate(100);
+        receipt.CategoryId = receipt.CategoryId == 0 ? 13 : receipt.CategoryId;
+        receipt.CreatedAt = DateTime.UtcNow;
+        receipt.UpdatedAt = DateTime.UtcNow;
+        receipt.ImageUrl = filePath;
     }
 
     private static (bool flowControl, IResult value) ValidateFileUpload(IFormFile file, IOptions<FileStorage> fileStorage)

@@ -52,9 +52,10 @@ INSERT  INTO Category (CategoryId, Name)
     UNION ALL SELECT 10, 'Housing'
     UNION ALL SELECT 11, 'Insurance'
     UNION ALL SELECT 12, 'Legal'
-    UNION ALL SELECT 13, 'Petcare'
-    UNION ALL SELECT 14, 'Transportation'
-    UNION ALL SELECT 15, 'Utilities'
+    UNION ALL SELECT 13, 'Miscellaneous'
+    UNION ALL SELECT 14, 'Petcare'
+    UNION ALL SELECT 15, 'Transportation'
+    UNION ALL SELECT 16, 'Utilities'
 WHERE NOT EXISTS (SELECT 1 FROM Category);
 EOF
     echo "Database and tables created successfully."

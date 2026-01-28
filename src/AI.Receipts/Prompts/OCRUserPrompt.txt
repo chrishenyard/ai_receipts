@@ -1,1 +1,2 @@
-﻿Extract and structure the receipt data from this image.
+﻿Analyze this receipt image according to the system instructions and return the result.
+Use only the JSON format described in the system prompt. Do not add explanations or commentary.

@@ -16,11 +16,15 @@ namespace AI.Receipts
         {
             _logger.LogError(exception, "An unhandled exception occurred: {ExceptionMessage}", exception.Message);
 
+            var errorMessage = exception.Message +
+                exception.InnerException != null ?
+                    $" {exception.InnerException?.Message}" : string.Empty;
+
             var problemDetails = new ProblemDetails
             {
                 Status = StatusCodes.Status500InternalServerError,
                 Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-                Title = exception.Message,
+                Title = errorMessage,
                 Instance = httpContext.Request.Path
             };
 

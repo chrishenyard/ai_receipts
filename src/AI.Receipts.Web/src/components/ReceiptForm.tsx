@@ -48,7 +48,7 @@ const ReceiptForm: React.FC<ReceiptFormProps> = ({
         imageUrl: data.imageUrl || '',
         tax: data.tax || 0,
         total: data.total || 0,
-        purchaseDate: data.purchaseDate || '',
+        purchaseDate: data.purchaseDate ? new Date(data.purchaseDate).toISOString().split('T')[0] : '',
         categoryId: data.categoryId || 0
       });
     }

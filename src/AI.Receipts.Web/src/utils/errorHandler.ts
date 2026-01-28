@@ -9,6 +9,10 @@ export const getErrorMessage = (error: unknown, defaultMessage: string = 'An une
       const fieldErrors = axiosError.response.data.errors;
       return Object.values(fieldErrors).flat().join(' ');
     }
+    const detail = axiosError.response.data?.detail;
+    if (detail) {
+      return detail;
+    }
     return axiosError.response.data.title as string || defaultMessage;
   } else if (axiosError.request) {
     return 'No response from server.';
