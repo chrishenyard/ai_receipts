@@ -67,3 +67,6 @@ IMPORTANT:
 - Ensure all numeric values are valid numbers
 - Do not include line breaks within field values unless part of extractedText
 - Make your best determination for categoryId based on receipt content
+
+Analyze this receipt image according to the system instructions and return the result.
+Use only the JSON format described in the system prompt. Do not add explanations or commentary.

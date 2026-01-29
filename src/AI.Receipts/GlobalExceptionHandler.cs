@@ -16,9 +16,9 @@ namespace AI.Receipts
         {
             _logger.LogError(exception, "An unhandled exception occurred: {ExceptionMessage}", exception.Message);
 
-            var errorMessage = exception.Message +
-                exception.InnerException != null ?
-                    $" {exception.InnerException?.Message}" : string.Empty;
+            var innerExceptionMessage = exception.InnerException != null ?
+                $" Inner Exception: {exception.InnerException?.Message}" : string.Empty;
+            var errorMessage = exception.Message + innerExceptionMessage;
 
             var problemDetails = new ProblemDetails
             {

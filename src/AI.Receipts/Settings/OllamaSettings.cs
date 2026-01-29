@@ -12,4 +12,5 @@ public class OllamaSettings
     public string VisionModel { get; set; } = null!;
     public int TimeoutFromMinutes { get; set; } = 5;
     public int ContextWindowSize { get; set; } = 2048;
+    public float Temperature { get; set; } = 0.8f;
 }
