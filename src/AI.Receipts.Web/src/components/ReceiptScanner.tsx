@@ -118,6 +118,7 @@ const ReceiptScanner: React.FC = () => {
     setReceiptData(null);
     setError(null);
     setSuccess(false);
+    setLoading(false);
   };
 
   return (

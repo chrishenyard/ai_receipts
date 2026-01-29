@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import ReceiptScanner from './components/ReceiptScanner';
+import ReceiptsTable from './components/ReceiptsTable';
+import Navigation from './components/Navigation';
 
 type Theme = 'light' | 'dark';
+type Page = 'scanner' | 'receipts';
 
 function getInitialTheme(): Theme {
   const stored = localStorage.getItem('theme') as Theme | null;
@@ -9,13 +12,50 @@ function getInitialTheme(): Theme {
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
+function getInitialPage(): Page {
+  const stored = localStorage.getItem('currentPage') as Page | null;
+  if (stored === 'scanner' || stored === 'receipts') return stored;
+  return 'scanner';
+}
+
 function App() {
   const [theme, setTheme] = useState<Theme>(() => getInitialTheme());
+  const [currentPage, setCurrentPage] = useState<Page>(() => getInitialPage());
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     localStorage.setItem('theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('currentPage', currentPage);
+  }, [currentPage]);
+
+  const handlePageChange = (page: Page) => {
+    setCurrentPage(page);
+  };
+
+  const getPageTitle = () => {
+    switch (currentPage) {
+      case 'scanner':
+        return {
+          title: 'Receipt Scanner',
+          description: 'Upload and scan your receipts with AI'
+        };
+      case 'receipts':
+        return {
+          title: 'Receipts',
+          description: 'View and manage your scanned receipts'
+        };
+      default:
+        return {
+          title: 'Receipt Scanner',
+          description: 'Extract, review, and save receipt data'
+        };
+    }
+  };
+
+  const pageInfo = getPageTitle();
 
   return (
     <div className="relative min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -39,39 +79,46 @@ function App() {
         <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-8 py-6">
           <div>
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">
-              Receipt Scanner
+              {pageInfo.title}
             </h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              Extract, review, and save receipt data.
+              {pageInfo.description}
             </p>
           </div>
 
-          <button
-            type="button"
-            aria-pressed={theme === 'dark'}
-            onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
-            className="inline-flex items-center gap-2 rounded-lg border border-black/10 bg-white px-3 py-2
-                       text-sm font-medium text-slate-700 shadow-sm transition
-                       hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-indigo-500/10
-                       dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-            title="Toggle dark mode"
-          >
-            {theme === 'dark' ? (
-              <>
-                <SunIcon className="h-5 w-5" /> Light
-              </>
-            ) : (
-              <>
-                <MoonIcon className="h-5 w-5" /> Dark
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-4">
+            <Navigation currentPage={currentPage} onPageChange={handlePageChange} />
+            
+            <button
+              type="button"
+              aria-pressed={theme === 'dark'}
+              onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+              className="inline-flex items-center gap-2 rounded-lg border border-black/10 bg-white px-3 py-2
+                         text-sm font-medium text-slate-700 shadow-sm transition
+                         hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-indigo-500/10
+                         dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              title="Toggle dark mode"
+            >
+              {theme === 'dark' ? (
+                <>
+                  <SunIcon className="h-5 w-5" /> 
+                  <span className="hidden sm:inline">Light</span>
+                </>
+              ) : (
+                <>
+                  <MoonIcon className="h-5 w-5" /> 
+                  <span className="hidden sm:inline">Dark</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main */}
       <main className="mx-auto max-w-[1400px] p-8">
-        <ReceiptScanner />
+        {currentPage === 'scanner' && <ReceiptScanner />}
+        {currentPage === 'receipts' && <ReceiptsTable />}
       </main>
     </div>
   );
