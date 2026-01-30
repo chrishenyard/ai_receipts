@@ -89,12 +89,12 @@ function App() {
       {/* Background accents */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div
-          className="absolute -top-32 left-1/2 h-[520px] w-[820px] -translate-x-1/2 rounded-full
+          className="absolute -top-32 left-1/2 h-130 w-205 -translate-x-1/2 rounded-full
                      bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.16),transparent_60%)]
                      blur-2xl dark:bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.22),transparent_60%)]"
         />
         <div
-          className="absolute -bottom-40 right-[-120px] h-[520px] w-[520px] rounded-full
+          className="absolute -bottom-40 -right-30 h-130 w-130 rounded-full
                      bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.14),transparent_60%)]
                      blur-2xl dark:bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.18),transparent_60%)]"
         />
@@ -103,7 +103,7 @@ function App() {
       {/* Header */}
       <header className="border-b border-black/5 bg-white/70 backdrop-blur
                          dark:border-white/10 dark:bg-slate-950/50">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-8 py-6">
+        <div className="mx-auto flex max-w-350 items-center justify-between gap-4 px-8 py-6">
           <div>
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">
               {pageInfo.title}
@@ -146,7 +146,7 @@ function App() {
       </header>
 
       {/* Main */}
-      <main className="mx-auto max-w-[1400px] p-8">
+      <main className="mx-auto max-w-350 p-8">
         {currentPage === 'scanner' && <ReceiptScanner />}
         {currentPage === 'receipts' && (
           <ReceiptsTable 

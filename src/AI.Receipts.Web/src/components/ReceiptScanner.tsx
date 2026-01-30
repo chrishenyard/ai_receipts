@@ -78,10 +78,6 @@ const ReceiptScanner: React.FC = () => {
     }
   };
 
-  const handleFormChange = (updatedData: ReceiptFormData): void => {
-    setReceiptData(updatedData);
-  };
-
   const handleSaveReceipt = async (data: ReceiptFormData): Promise<void> => {
     setLoading(true);
     setError(null);
@@ -166,7 +162,6 @@ const ReceiptScanner: React.FC = () => {
             <ReceiptForm
               data={receiptData}
               categories={categories}
-              onChange={handleFormChange}
               onSave={handleSaveReceipt}
               onReset={handleReset}
               loading={loading}

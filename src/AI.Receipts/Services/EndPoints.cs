@@ -89,7 +89,7 @@ public class EndPoints
         });
 
         app.MapPost("/api/receipt/update", async (
-            [FromForm] Receipt receipt,
+            Receipt receipt,
             AiReceiptsDbContext context,
             IValidator<Receipt> validator) =>
         {
