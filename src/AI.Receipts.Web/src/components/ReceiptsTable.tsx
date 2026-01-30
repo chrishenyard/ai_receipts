@@ -85,7 +85,7 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
     }
 
     try {
-      await apiClient.delete(`/api/receipts/${receiptId}`);
+      await apiClient.delete(`/api/receipt/delete/${receiptId}`);
       setReceipts(receipts.filter(receipt => receipt.receiptId !== receiptId));
       
       if (onDelete) {

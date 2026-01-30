@@ -108,7 +108,7 @@ public class EndPoints
             return Results.Json(receipt);
         });
 
-        app.MapPost("/api/receipt/delete/{receiptId}", async (
+        app.MapDelete("/api/receipt/delete/{receiptId}", async (
             int receiptId,
             AiReceiptsDbContext context) =>
         {
