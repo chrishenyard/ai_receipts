@@ -14,9 +14,9 @@ public static class ChatClient
         var chatResponse = ollamaClient.ChatAsync(chatRequest, cancellationToken: cancellationToken);
         var message = new StringBuilder();
 
-        await foreach (var response in chatResponse.ConfigureAwait(false))
+        await foreach (var response in chatResponse)
         {
-            var content = response?.Message?.Content;
+            var content = response?.Message?.Content?.Trim();
             if (string.IsNullOrWhiteSpace(content))
             {
                 continue;

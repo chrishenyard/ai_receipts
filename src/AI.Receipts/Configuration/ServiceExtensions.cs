@@ -5,6 +5,7 @@ using AI.Receipts.Services;
 using AI.Receipts.Settings;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
@@ -193,5 +194,16 @@ public static class ServiceExtensions
         builder.Configuration.AddConfiguration(configuration);
 
         return builder;
+    }
+
+    public static void AddStaticFiles(this WebApplication app, IConfiguration config)
+    {
+        var staticFilesPath = config.GetSection("FileStorage").Get<FileStorage>()!;
+
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            FileProvider = new PhysicalFileProvider(Path.GetFullPath(staticFilesPath.UploadPath)),
+            RequestPath = "/receipt-images"
+        });
     }
 }

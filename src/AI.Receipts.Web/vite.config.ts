@@ -39,6 +39,12 @@ export default defineConfig(({ mode }) => {
                     secure: false,
                     ws: true,
                 },
+                "/receipt-images": {
+                    target: env.VITE_API_URL || "https://localhost:9020",
+                    changeOrigin: true,
+                    secure: false,
+                    ws: true,
+                },
             },
         },
     };

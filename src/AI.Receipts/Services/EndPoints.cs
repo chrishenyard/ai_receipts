@@ -88,6 +88,45 @@ public class EndPoints
             return Results.Json(receipts);
         });
 
+        app.MapPost("/api/receipt/update", async (
+            [FromForm] Receipt receipt,
+            AiReceiptsDbContext context,
+            IValidator<Receipt> validator) =>
+        {
+            var validationResult = await validator.ValidateAsync(receipt);
+
+            if (!validationResult.IsValid)
+            {
+                var errors = validationResult.Errors.Select(e => e.ErrorMessage);
+                return Results.BadRequest(new { Errors = errors });
+            }
+
+            receipt.UpdatedAt = DateTime.UtcNow;
+            context.Receipts.Update(receipt);
+            await context.SaveChangesAsync();
+
+            return Results.Json(receipt);
+        });
+
+        app.MapPost("/api/receipt/delete/{receiptId}", async (
+            int receiptId,
+            AiReceiptsDbContext context) =>
+        {
+            var receipt = await context.Receipts
+                .Where(r => r.ReceiptId == receiptId)
+                .FirstOrDefaultAsync();
+
+            if (receipt == null)
+            {
+                return Results.NotFound($"Receipt with ID {receiptId} not found.");
+            }
+
+            context.Receipts.Remove(receipt);
+            await context.SaveChangesAsync();
+
+            return Results.Ok($"Receipt with ID {receiptId} deleted successfully.");
+        });
+
         app.MapPost("/api/receipt", async (
             HttpRequest request,
             AiReceiptsDbContext context,
@@ -205,7 +244,8 @@ public class EndPoints
                     receipt = JsonDocumentToReceipt(doc);
                 }
 
-                NormalizeReceiptFields(receipt, filePath);
+                NormalizeReceiptFields(receipt);
+                receipt.ImageUrl = filePath;
                 context.Receipts.Add(receipt);
                 await context.SaveChangesAsync(cancellationToken);
                 return Results.Json(receipt);
@@ -290,7 +330,7 @@ public class EndPoints
         return receipt;
     }
 
-    private static void NormalizeReceiptFields(Receipt receipt, string filePath)
+    private static void NormalizeReceiptFields(Receipt receipt)
     {
         receipt.ExtractedText = receipt.ExtractedText.Truncate(4096);
         receipt.Title = receipt.Title.Truncate(100);
@@ -302,7 +342,6 @@ public class EndPoints
         receipt.CategoryId = receipt.CategoryId == 0 ? 13 : receipt.CategoryId;
         receipt.CreatedAt = DateTime.UtcNow;
         receipt.UpdatedAt = DateTime.UtcNow;
-        receipt.ImageUrl = filePath;
     }
 
     private static (bool flowControl, IResult value) ValidateFileUpload(IFormFile file, IOptions<FileStorage> fileStorage)

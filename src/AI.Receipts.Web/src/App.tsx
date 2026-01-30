@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import ReceiptScanner from './components/ReceiptScanner';
 import ReceiptsTable from './components/ReceiptsTable';
+import ReceiptEdit from './components/ReceiptEdit';
 import Navigation from './components/Navigation';
+import { Receipt } from './types/Receipt';
 
 type Theme = 'light' | 'dark';
-type Page = 'scanner' | 'receipts';
+type Page = 'scanner' | 'receipts' | 'edit';
 
 function getInitialTheme(): Theme {
   const stored = localStorage.getItem('theme') as Theme | null;
@@ -14,13 +16,14 @@ function getInitialTheme(): Theme {
 
 function getInitialPage(): Page {
   const stored = localStorage.getItem('currentPage') as Page | null;
-  if (stored === 'scanner' || stored === 'receipts') return stored;
+  if (stored === 'scanner' || stored === 'receipts' || stored === 'edit') return stored;
   return 'scanner';
 }
 
 function App() {
   const [theme, setTheme] = useState<Theme>(() => getInitialTheme());
   const [currentPage, setCurrentPage] = useState<Page>(() => getInitialPage());
+  const [editingReceipt, setEditingReceipt] = useState<Receipt | null>(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -28,11 +31,30 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem('currentPage', currentPage);
+    // Don't persist edit page
+    if (currentPage !== 'edit') {
+      localStorage.setItem('currentPage', currentPage);
+    }
   }, [currentPage]);
 
-  const handlePageChange = (page: Page) => {
+  const handlePageChange = (page: Exclude<Page, 'edit'>) => {
     setCurrentPage(page);
+    setEditingReceipt(null);
+  };
+
+  const handleEditReceipt = (receipt: Receipt) => {
+    setEditingReceipt(receipt);
+    setCurrentPage('edit');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingReceipt(null);
+    setCurrentPage('receipts');
+  };
+
+  const handleSaveEdit = (updatedReceipt: Receipt) => {
+    // Receipt was saved successfully
+    console.log('Receipt updated:', updatedReceipt);
   };
 
   const getPageTitle = () => {
@@ -46,6 +68,11 @@ function App() {
         return {
           title: 'Receipts',
           description: 'View and manage your scanned receipts'
+        };
+      case 'edit':
+        return {
+          title: 'Edit Receipt',
+          description: 'Update receipt details'
         };
       default:
         return {
@@ -87,7 +114,10 @@ function App() {
           </div>
 
           <div className="flex items-center gap-4">
-            <Navigation currentPage={currentPage} onPageChange={handlePageChange} />
+            {/* Only show navigation if not in edit mode */}
+            {currentPage !== 'edit' && (
+              <Navigation currentPage={currentPage as 'scanner' | 'receipts'} onPageChange={handlePageChange} />
+            )}
             
             <button
               type="button"
@@ -118,7 +148,18 @@ function App() {
       {/* Main */}
       <main className="mx-auto max-w-[1400px] p-8">
         {currentPage === 'scanner' && <ReceiptScanner />}
-        {currentPage === 'receipts' && <ReceiptsTable />}
+        {currentPage === 'receipts' && (
+          <ReceiptsTable 
+            onEdit={handleEditReceipt}
+          />
+        )}
+        {currentPage === 'edit' && editingReceipt && (
+          <ReceiptEdit 
+            receipt={editingReceipt}
+            onCancel={handleCancelEdit}
+            onSave={handleSaveEdit}
+          />
+        )}
       </main>
     </div>
   );

@@ -51,9 +51,11 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection()
-    .UseExceptionHandler()
-    .UseAntiforgery();
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.AddStaticFiles(configuration);
+app.UseExceptionHandler();
+app.UseAntiforgery();
 
 EndPoints.Map(app);
 app.Run();
