@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Receipt, ReceiptFormData } from '../types/Receipt';
 import { Category } from '../types/Category';
 import ReceiptForm from './ReceiptForm';
-import apiClient from '../services/api';
 import { getErrorMessage } from '../utils/errorHandler';
 import { Button } from './ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import apiClient from '../services/api';
 
 interface ReceiptEditProps {
   receipt: Receipt;
@@ -18,15 +19,58 @@ const ReceiptEdit: React.FC<ReceiptEditProps> = ({
   onCancel,
   onSave
 }) => {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
   const [formData, setFormData] = useState<ReceiptFormData | null>(null);
 
+  const queryClient = useQueryClient();
+
+  // Load categories using TanStack React Query
+  const {
+    data: categories = [],
+    isLoading: categoriesLoading,
+    error: categoriesError
+  } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async (): Promise<Category[]> => {
+      const response = await apiClient.get<Category[]>('/api/Categories');
+      return response.data;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+
+  // Update receipt mutation
+  const updateReceiptMutation = useMutation({
+    mutationFn: async (data: ReceiptFormData): Promise<Receipt> => {
+      const response = await apiClient.post<Receipt>('/api/receipt/update', data);
+      return response.data;
+    },
+    onSuccess: (updatedReceipt) => {
+      setSuccess(true);
+      setError(null);
+      
+      // Invalidate related queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
+      queryClient.invalidateQueries({ queryKey: ['receipt', updatedReceipt.receiptId] });
+      
+      // Call parent callback with updated receipt
+      onSave(updatedReceipt);
+
+      // Auto-close after successful save
+      setTimeout(() => {
+        onCancel();
+      }, 1500);
+    },
+    onError: (err) => {
+      const errorMessage = getErrorMessage(err, 'Failed to update receipt. Please try again.');
+      setError(errorMessage);
+      console.error('Failed to update receipt:', err);
+    }
+  });
+
+  // Convert Receipt to ReceiptFormData on mount or receipt change
   useEffect(() => {
-    loadCategories();
-    // Convert Receipt to ReceiptFormData
     setFormData({
       receiptId: receipt.receiptId,
       extractedText: receipt.extractedText,
@@ -44,39 +88,19 @@ const ReceiptEdit: React.FC<ReceiptEditProps> = ({
     });
   }, [receipt]);
 
-  const loadCategories = async (): Promise<void> => {
-    try {
-      const response = await apiClient.get<Category[]>('/api/Categories');
-      setCategories(response.data);
-    } catch (err) {
-      const errorMessage = getErrorMessage(err, 'Failed to load categories.');
+  // Update error state if categories fail to load
+  useEffect(() => {
+    if (categoriesError && !error) {
+      const errorMessage = getErrorMessage(categoriesError, 'Failed to load categories.');
       setError(errorMessage);
-      console.error('Failed to load categories:', err);
     }
-  };
+  }, [categoriesError, error]);
 
   const handleSaveReceipt = async (data: ReceiptFormData): Promise<void> => {
-    setLoading(true);
     setError(null);
     setSuccess(false);
-
-    try {
-      const response = await apiClient.post<Receipt>('/api/receipt/update', data);
-      setSuccess(true);
-      
-      // Call parent callback with updated receipt
-      onSave(response.data);
-
-      // Auto-close after successful save
-      setTimeout(() => {
-        onCancel();
-      }, 1500);
-    } catch (err) {
-      const errorMessage = getErrorMessage(err, 'Failed to update receipt. Please try again.');
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
+    
+    updateReceiptMutation.mutate(data);
   };
 
   const handleReset = (): void => {
@@ -98,14 +122,20 @@ const ReceiptEdit: React.FC<ReceiptEditProps> = ({
     });
     setError(null);
     setSuccess(false);
+    
+    // Reset mutation state
+    updateReceiptMutation.reset();
   };
 
-  if (!formData) {
+  // Show loading state if categories are still loading or form data is not ready
+  if (categoriesLoading || !formData) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
           <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-          <p className="text-muted-foreground">Loading receipt...</p>
+          <p className="text-muted-foreground">
+            {categoriesLoading ? 'Loading categories...' : 'Loading receipt...'}
+          </p>
         </div>
       </div>
     );
@@ -198,7 +228,7 @@ const ReceiptEdit: React.FC<ReceiptEditProps> = ({
             categories={categories}
             onSave={handleSaveReceipt}
             onReset={handleReset}
-            loading={loading}
+            loading={updateReceiptMutation.isPending}
           />
         </div>
       </div>

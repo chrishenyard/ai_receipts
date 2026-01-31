@@ -4,6 +4,13 @@ import ReceiptsTable from './components/ReceiptsTable';
 import ReceiptEdit from './components/ReceiptEdit';
 import Navigation from './components/Navigation';
 import { Receipt } from './types/Receipt';
+import {
+  QueryClient,
+  QueryClientProvider
+} from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+
+const queryClient = new QueryClient()
 
 type Theme = 'light' | 'dark';
 type Page = 'scanner' | 'receipts' | 'edit';
@@ -146,21 +153,24 @@ function App() {
       </header>
 
       {/* Main */}
-      <main className="mx-auto max-w-350 p-8">
-        {currentPage === 'scanner' && <ReceiptScanner />}
-        {currentPage === 'receipts' && (
-          <ReceiptsTable 
-            onEdit={handleEditReceipt}
-          />
-        )}
-        {currentPage === 'edit' && editingReceipt && (
-          <ReceiptEdit 
-            receipt={editingReceipt}
-            onCancel={handleCancelEdit}
-            onSave={handleSaveEdit}
-          />
-        )}
-      </main>
+      <QueryClientProvider client={queryClient}>
+        <ReactQueryDevtools />
+        <main className="mx-auto max-w-350 p-8">
+          {currentPage === 'scanner' && <ReceiptScanner />}
+          {currentPage === 'receipts' && (
+            <ReceiptsTable 
+              onEdit={handleEditReceipt}
+            />
+          )}
+          {currentPage === 'edit' && editingReceipt && (
+            <ReceiptEdit 
+              receipt={editingReceipt}
+              onCancel={handleCancelEdit}
+              onSave={handleSaveEdit}
+            />
+          )}
+        </main>
+      </QueryClientProvider>  
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Receipt } from '../types/Receipt';
 import { Category } from '../types/Category';
-import apiClient from '../services/api';
 import { getErrorMessage } from '../utils/errorHandler';
 import {
   Table,
@@ -14,6 +13,8 @@ import {
 } from './ui/table';
 import { Button } from './ui/button';
 import { Eye, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import apiClient from '../services/api';
 
 interface ReceiptsTableProps {
   onEdit?: (receipt: Receipt) => void;
@@ -33,69 +34,113 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
   onView,
   onDelete
 }) => {
-  const [receipts, setReceipts] = useState<ReceiptWithCategory[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(ITEMS_PER_PAGE);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const queryClient = useQueryClient();
 
-  const loadData = async (): Promise<void> => {
-    setLoading(true);
-    setError(null);
+  // Load categories using TanStack React Query
+  const {
+    data: categories = [],
+    isLoading: categoriesLoading,
+    error: categoriesError
+  } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async (): Promise<Category[]> => {
+      const response = await apiClient.get<Category[]>('/api/Categories');
+      return response.data;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
 
-    try {
-      // Load categories and receipts in parallel
-      const [categoriesResponse, receiptsResponse] = await Promise.all([
-        apiClient.get<Category[]>('/api/Categories'),
-        apiClient.get<Receipt[]>('/api/receipts')
-      ]);
+  // Load receipts using TanStack React Query
+  const {
+    data: receiptsData = [],
+    isLoading: receiptsLoading,
+    error: receiptsError,
+    refetch: refetchReceipts
+  } = useQuery({
+    queryKey: ['receipts'],
+    queryFn: async (): Promise<Receipt[]> => {
+      const response = await apiClient.get<Receipt[]>('/api/receipts');
+      return response.data;
+    },
+    staleTime: 1 * 60 * 1000, // 1 minute
+    gcTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-      const categoriesData = categoriesResponse.data;
-      const receiptsData = receiptsResponse.data;
-
-      // Create a map of category IDs to names for quick lookup
-      const categoryMap = new Map<number, string>();
-      categoriesData.forEach(category => {
-        categoryMap.set(category.categoryId, category.name);
-      });
-
-      // Combine receipts with category names
-      const receiptsWithCategories: ReceiptWithCategory[] = receiptsData.map(receipt => ({
-        ...receipt,
-        categoryName: categoryMap.get(receipt.categoryId) || 'Uncategorized'
-      }));
-
-      setReceipts(receiptsWithCategories);
-    } catch (err) {
-      const errorMessage = getErrorMessage(err, 'Failed to load receipts.');
+  // Delete receipt mutation
+  const deleteReceiptMutation = useMutation({
+    mutationFn: async (receiptId: number): Promise<void> => {
+      await apiClient.delete(`/api/receipt/delete/${receiptId}`);
+    },
+    onSuccess: (_, receiptId) => {
+      // Invalidate receipts query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
+      
+      // Also invalidate the specific receipt query
+      queryClient.invalidateQueries({ queryKey: ['receipt', receiptId] });
+      
+      setError(null);
+      
+      if (onDelete) {
+        onDelete(receiptId);
+      }
+    },
+    onError: (err) => {
+      const errorMessage = getErrorMessage(err, 'Failed to delete receipt.');
       setError(errorMessage);
-      console.error('Failed to load data:', err);
-    } finally {
-      setLoading(false);
+      console.error('Failed to delete receipt:', err);
     }
-  };
+  });
+
+  // Combine receipts with category names
+  const receiptsWithCategories: ReceiptWithCategory[] = React.useMemo(() => {
+    if (!receiptsData.length || !categories.length) {
+      return receiptsData.map(receipt => ({
+        ...receipt,
+        categoryName: 'Loading...'
+      }));
+    }
+
+    // Create a map of category IDs to names for quick lookup
+    const categoryMap = new Map<number, string>();
+    categories.forEach(category => {
+      categoryMap.set(category.categoryId, category.name);
+    });
+
+    return receiptsData.map(receipt => ({
+      ...receipt,
+      categoryName: categoryMap.get(receipt.categoryId) || 'Uncategorized'
+    }));
+  }, [receiptsData, categories]);
+
+  // Update error state if queries fail
+  useEffect(() => {
+    if (categoriesError && !error) {
+      const errorMessage = getErrorMessage(categoriesError, 'Failed to load categories.');
+      setError(errorMessage);
+    } else if (receiptsError && !error) {
+      const errorMessage = getErrorMessage(receiptsError, 'Failed to load receipts.');
+      setError(errorMessage);
+    }
+  }, [categoriesError, receiptsError, error]);
 
   const handleDelete = async (receiptId: number): Promise<void> => {
     if (!confirm('Are you sure you want to delete this receipt?')) {
       return;
     }
 
-    try {
-      await apiClient.delete(`/api/receipt/delete/${receiptId}`);
-      setReceipts(receipts.filter(receipt => receipt.receiptId !== receiptId));
-      
-      if (onDelete) {
-        onDelete(receiptId);
-      }
-    } catch (err) {
-      const errorMessage = getErrorMessage(err, 'Failed to delete receipt.');
-      setError(errorMessage);
-      console.error('Failed to delete receipt:', err);
-    }
+    setError(null);
+    deleteReceiptMutation.mutate(receiptId);
+  };
+
+  const handleRetry = () => {
+    setError(null);
+    refetchReceipts();
+    queryClient.invalidateQueries({ queryKey: ['categories'] });
   };
 
   const formatDate = (dateString: string): string => {
@@ -114,11 +159,11 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
   };
 
   // Pagination calculations
-  const totalItems = receipts.length;
+  const totalItems = receiptsWithCategories.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentReceipts = receipts.slice(startIndex, endIndex);
+  const currentReceipts = receiptsWithCategories.slice(startIndex, endIndex);
 
   // Reset to first page when itemsPerPage changes
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
@@ -133,7 +178,10 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
     }
   }, [currentPage, totalPages]);
 
-  if (loading) {
+  // Combined loading state
+  const isLoading = categoriesLoading || receiptsLoading;
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
@@ -152,7 +200,7 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
           variant="outline"
           size="sm"
           className="ml-4"
-          onClick={loadData}
+          onClick={handleRetry}
         >
           Retry
         </Button>
@@ -165,14 +213,14 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
       <div className="p-6 border-b border-border">
         <h2 className="text-2xl font-semibold tracking-tight">Receipts</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          {receipts.length} receipt{receipts.length !== 1 ? 's' : ''} found
+          {receiptsWithCategories.length} receipt{receiptsWithCategories.length !== 1 ? 's' : ''} found
         </p>
       </div>
       
       <div className="p-6">
         <Table>
           <TableCaption>
-            {receipts.length === 0 
+            {receiptsWithCategories.length === 0 
               ? 'No receipts found. Upload and scan your first receipt to get started.'
               : `Showing ${startIndex + 1}-${Math.min(endIndex, totalItems)} of ${totalItems} receipt${totalItems !== 1 ? 's' : ''}.`
             }
@@ -189,7 +237,7 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {receipts.length === 0 ? (
+            {receiptsWithCategories.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   No receipts available
@@ -255,6 +303,7 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
                         onClick={() => receipt.receiptId && handleDelete(receipt.receiptId)}
                         title="Delete receipt"
                         className="text-destructive hover:text-destructive"
+                        disabled={deleteReceiptMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -332,7 +381,8 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
               </div>
             </div>
           </div>
-        )}      </div>
+        )}      
+      </div>
     </div>
   );
 };
