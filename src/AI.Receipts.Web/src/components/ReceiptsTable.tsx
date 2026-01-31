@@ -11,7 +11,7 @@ import {
   TableRow,
 } from './ui/table';
 import { Button } from './ui/button';
-import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Search } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../services/api';
 import {
@@ -43,6 +43,7 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
 }) => {
   const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [globalFilter, setGlobalFilter] = useState<string>('');
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -338,9 +339,12 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
+    onGlobalFilterChange: setGlobalFilter,
+    globalFilterFn: 'includesString',
     state: {
       sorting,
       pagination,
+      globalFilter,
     },
   });
 
@@ -394,10 +398,25 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
   return (
     <div className="rounded-xl bg-white border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.1)] dark:bg-slate-900 dark:border-white/10 dark:shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
       <div className="p-6 border-b border-border">
-        <h2 className="text-2xl font-semibold tracking-tight">Receipts</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          {receiptsWithCategories.length} receipt{receiptsWithCategories.length !== 1 ? 's' : ''} found
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight">Receipts</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {table.getFilteredRowModel().rows.length} of {receiptsWithCategories.length} receipt{receiptsWithCategories.length !== 1 ? 's' : ''} 
+              {globalFilter ? ' (filtered)' : ''}
+            </p>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <input
+              type="text"
+              placeholder="Search receipts..."
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="pl-10 pr-4 py-2 w-80 rounded-lg border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            />
+          </div>
+        </div>
       </div>
       
       <div className="p-6">
@@ -449,7 +468,7 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
         </Table>
 
         {/* Pagination Controls */}
-        {receiptsWithCategories.length > 0 && (
+        {table.getFilteredRowModel().rows.length > 0 && (
           <div className="flex items-center justify-between mt-4">
             <div className="flex items-center space-x-2">
               <p className="text-sm text-muted-foreground">
