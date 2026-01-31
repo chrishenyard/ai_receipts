@@ -1,20 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Receipt } from '../types/Receipt';
 import { Category } from '../types/Category';
 import { getErrorMessage } from '../utils/errorHandler';
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from './ui/table';
 import { Button } from './ui/button';
-import { Eye, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../services/api';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+  type PaginationState
+} from '@tanstack/react-table';
 
 interface ReceiptsTableProps {
   onEdit?: (receipt: Receipt) => void;
@@ -26,17 +36,17 @@ interface ReceiptWithCategory extends Receipt {
   categoryName?: string;
 }
 
-const ITEMS_PER_PAGE = 10;
-const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20, 50];
-
 const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
   onEdit,
   onView,
   onDelete
 }) => {
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [itemsPerPage, setItemsPerPage] = useState<number>(ITEMS_PER_PAGE);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   const queryClient = useQueryClient();
 
@@ -97,7 +107,7 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
   });
 
   // Combine receipts with category names
-  const receiptsWithCategories: ReceiptWithCategory[] = React.useMemo(() => {
+  const receiptsWithCategories: ReceiptWithCategory[] = useMemo(() => {
     if (!receiptsData.length || !categories.length) {
       return receiptsData.map(receipt => ({
         ...receipt,
@@ -117,6 +127,223 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
     }));
   }, [receiptsData, categories]);
 
+  const handleDelete = async (receiptId: number): Promise<void> => {
+    if (!confirm('Are you sure you want to delete this receipt?')) {
+      return;
+    }
+
+    setError(null);
+    deleteReceiptMutation.mutate(receiptId);
+  };
+
+  // Define table columns using standard ColumnDef approach
+  const columns = useMemo<ColumnDef<ReceiptWithCategory>[]>(
+    () => [
+      {
+        accessorKey: 'title',
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="h-auto p-0 font-medium hover:bg-transparent"
+          >
+            Title
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-2 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        ),
+        cell: ({ row }) => (
+          <div className="max-w-50">
+            <div className="truncate font-medium" title={row.getValue('title')}>
+              {row.getValue('title')}
+            </div>
+            {row.original.description && (
+              <div className="text-xs text-muted-foreground truncate mt-1" title={row.original.description}>
+                {row.original.description}
+              </div>
+            )}
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'vendor',
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="h-auto p-0 font-medium hover:bg-transparent"
+          >
+            Vendor
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-2 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        ),
+        cell: ({ getValue }) => getValue() as string,
+      },
+      {
+        accessorKey: 'categoryName',
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="h-auto p-0 font-medium hover:bg-transparent"
+          >
+            Category
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-2 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        ),
+        cell: ({ getValue }) => (
+          <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+            {(getValue() as string) || 'Uncategorized'}
+          </span>
+        ),
+      },
+      {
+        id: 'location',
+        header: 'Location',
+        cell: ({ row }) => {
+          const location = [row.original.city, row.original.state, row.original.country]
+            .filter(Boolean)
+            .join(', ');
+          return <div className="text-sm">{location || '—'}</div>;
+        },
+      },
+      {
+        accessorKey: 'purchaseDate',
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="h-auto p-0 font-medium hover:bg-transparent"
+          >
+            Purchase Date
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-2 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        ),
+        cell: ({ getValue }) => {
+          const date = getValue() as string;
+          if (!date) return '—';
+          try {
+            return new Date(date).toLocaleDateString();
+          } catch {
+            return date;
+          }
+        },
+        sortingFn: 'datetime',
+      },
+      {
+        accessorKey: 'total',
+        header: ({ column }) => (
+          <div className="text-right">
+            <Button
+              variant="ghost"
+              onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+              className="h-auto p-0 font-medium hover:bg-transparent"
+            >
+              Total
+              {column.getIsSorted() === 'asc' ? (
+                <ArrowUp className="ml-2 h-4 w-4" />
+              ) : column.getIsSorted() === 'desc' ? (
+                <ArrowDown className="ml-2 h-4 w-4" />
+              ) : (
+                <ArrowUpDown className="ml-2 h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        ),
+        cell: ({ getValue }) => {
+          const amount = getValue() as number;
+          return (
+            <div className="text-right font-mono">
+              {new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+              }).format(amount)}
+            </div>
+          );
+        },
+        sortingFn: 'basic',
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-1">
+            {onView && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => onView(row.original)}
+                title="View receipt"
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+            )}
+            {onEdit && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => onEdit(row.original)}
+                title="Edit receipt"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => row.original.receiptId && handleDelete(row.original.receiptId)}
+              title="Delete receipt"
+              className="text-destructive hover:text-destructive"
+              disabled={deleteReceiptMutation.isPending}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [onView, onEdit, deleteReceiptMutation.isPending]
+  );
+
+  // Create table instance
+  const table = useReactTable({
+    data: receiptsWithCategories,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    state: {
+      sorting,
+      pagination,
+    },
+  });
+
   // Update error state if queries fail
   useEffect(() => {
     if (categoriesError && !error) {
@@ -128,55 +355,11 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
     }
   }, [categoriesError, receiptsError, error]);
 
-  const handleDelete = async (receiptId: number): Promise<void> => {
-    if (!confirm('Are you sure you want to delete this receipt?')) {
-      return;
-    }
-
-    setError(null);
-    deleteReceiptMutation.mutate(receiptId);
-  };
-
   const handleRetry = () => {
     setError(null);
     refetchReceipts();
     queryClient.invalidateQueries({ queryKey: ['categories'] });
   };
-
-  const formatDate = (dateString: string): string => {
-    try {
-      return new Date(dateString).toLocaleDateString();
-    } catch {
-      return dateString;
-    }
-  };
-
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
-
-  // Pagination calculations
-  const totalItems = receiptsWithCategories.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentReceipts = receiptsWithCategories.slice(startIndex, endIndex);
-
-  // Reset to first page when itemsPerPage changes
-  const handleItemsPerPageChange = (newItemsPerPage: number) => {
-    setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1);
-  };
-
-  // Reset to first page when receipts change (after delete)
-  useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1);
-    }
-  }, [currentPage, totalPages]);
 
   // Combined loading state
   const isLoading = categoriesLoading || receiptsLoading;
@@ -219,116 +402,69 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
       
       <div className="p-6">
         <Table>
-          <TableCaption>
-            {receiptsWithCategories.length === 0 
-              ? 'No receipts found. Upload and scan your first receipt to get started.'
-              : `Showing ${startIndex + 1}-${Math.min(endIndex, totalItems)} of ${totalItems} receipt${totalItems !== 1 ? 's' : ''}.`
-            }
-          </TableCaption>
           <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Vendor</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Purchase Date</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead className="w-30">Actions</TableHead>
-            </TableRow>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} className={header.id === 'total' ? 'text-right' : ''}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
           </TableHeader>
           <TableBody>
-            {receiptsWithCategories.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                  No receipts available
-                </TableCell>
-              </TableRow>
-            ) : (
-              currentReceipts.map((receipt) => (
-                <TableRow key={receipt.receiptId}>
-                  <TableCell className="font-medium max-w-50">
-                    <div className="truncate" title={receipt.title}>
-                      {receipt.title}
-                    </div>
-                    {receipt.description && (
-                      <div className="text-xs text-muted-foreground truncate mt-1" title={receipt.description}>
-                        {receipt.description}
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell>{receipt.vendor}</TableCell>
-                  <TableCell>
-                    <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-                      {receipt.categoryName}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {[receipt.city, receipt.state, receipt.country]
-                        .filter(Boolean)
-                        .join(', ') || '—'}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {receipt.purchaseDate ? formatDate(receipt.purchaseDate) : '—'}
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
-                    {formatCurrency(receipt.total)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      {onView && (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => onView(receipt)}
-                          title="View receipt"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
                       )}
-                      {onEdit && (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => onEdit(receipt)}
-                          title="Edit receipt"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => receipt.receiptId && handleDelete(receipt.receiptId)}
-                        title="Delete receipt"
-                        className="text-destructive hover:text-destructive"
-                        disabled={deleteReceiptMutation.isPending}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+                    </TableCell>
+                  ))}
                 </TableRow>
               ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  No receipts found. Upload and scan your first receipt to get started.
+                </TableCell>
+              </TableRow>
             )}
           </TableBody>
-        </Table>        
+        </Table>
+
         {/* Pagination Controls */}
-        {totalItems > 0 && (
+        {receiptsWithCategories.length > 0 && (
           <div className="flex items-center justify-between mt-4">
             <div className="flex items-center space-x-2">
               <p className="text-sm text-muted-foreground">
                 Show
               </p>
               <select
-                value={itemsPerPage}
-                onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                value={table.getState().pagination.pageSize}
+                onChange={(e) => {
+                  table.setPageSize(Number(e.target.value));
+                }}
                 className="h-8 w-16 rounded border border-input bg-background px-2 py-1 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >
-                {ITEMS_PER_PAGE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
+                {[5, 10, 20, 50].map((pageSize) => (
+                  <option key={pageSize} value={pageSize}>
+                    {pageSize}
                   </option>
                 ))}
               </select>
@@ -340,15 +476,16 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
             <div className="flex items-center space-x-6 lg:space-x-8">
               <div className="flex items-center space-x-2">
                 <p className="text-sm font-medium">
-                  Page {currentPage} of {totalPages}
+                  Page {table.getState().pagination.pageIndex + 1} of{' '}
+                  {table.getPageCount()}
                 </p>
               </div>
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
                   className="h-8 w-8 p-0"
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
+                  onClick={() => table.setPageIndex(0)}
+                  disabled={!table.getCanPreviousPage()}
                 >
                   <ChevronLeft className="h-4 w-4" />
                   <ChevronLeft className="h-4 w-4 -ml-2" />
@@ -356,24 +493,24 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
                 <Button
                   variant="outline"
                   className="h-8 w-8 p-0"
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                  disabled={currentPage === 1}
+                  onClick={() => table.previousPage()}
+                  disabled={!table.getCanPreviousPage()}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="outline"
                   className="h-8 w-8 p-0"
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={currentPage === totalPages}
+                  onClick={() => table.nextPage()}
+                  disabled={!table.getCanNextPage()}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="outline"
                   className="h-8 w-8 p-0"
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPage === totalPages}
+                  onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                  disabled={!table.getCanNextPage()}
                 >
                   <ChevronRight className="h-4 w-4" />
                   <ChevronRight className="h-4 w-4 -ml-2" />
