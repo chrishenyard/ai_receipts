@@ -139,23 +139,22 @@ public class EndPoints
             CancellationToken cancellationToken) =>
         {
             // return a valid Receipt in JSON format to circumvent this method for testing
-            var testReceiptJson = new Receipt
-            {
-                ExtractedText = "Test extracted text",
-                Title = "Test Receipt",
-                Description = "This is a test receipt.",
-                Vendor = "Test Vendor",
-                State = "Test State",
-                City = "Test City",
-                Country = "Test Country",
-                Tax = 1.23m,
-                Total = 12.34m,
-                PurchaseDate = DateTime.UtcNow,
-                CategoryId = 1
-            };
+            //var testReceiptJson = new Receipt
+            //{
+            //    ExtractedText = "Test extracted text",
+            //    Title = "Test Receipt",
+            //    Description = "This is a test receipt.",
+            //    Vendor = "Test Vendor",
+            //    State = "Test State",
+            //    City = "Test City",
+            //    Country = "Test Country",
+            //    Tax = 1.23m,
+            //    Total = 12.34m,
+            //    PurchaseDate = DateTime.UtcNow,
+            //    CategoryId = 1
+            //};
 
-            return Results.Json(testReceiptJson);
-
+            //return Results.Json(testReceiptJson);
 
             (bool flowControl, IResult value) = ValidateFileUpload(file, fileStorage);
             if (!flowControl)
