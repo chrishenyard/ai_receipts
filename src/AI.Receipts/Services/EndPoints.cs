@@ -347,6 +347,11 @@ public class EndPoints
     {
         var fileStorageSettings = fileStorage.Value;
 
+        if (!IO.File.IsValidImage(file))
+        {
+            return (flowControl: false, value: Results.BadRequest("The uploaded file is not a valid image."));
+        }
+
         if (file == null || file.Length == 0)
         {
             return (flowControl: false, value: Results.BadRequest("No file was uploaded."));
