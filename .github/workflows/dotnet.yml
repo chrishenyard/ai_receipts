@@ -20,7 +20,10 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 10.0.x
-        node: 25.x
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with: 
+        node-version: 20.x      
     - name: Restore dependencies
       run:  dotnet restore ./AI.Receipts.slnx
     - name: Build
