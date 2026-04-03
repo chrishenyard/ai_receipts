@@ -10,7 +10,6 @@ RUN mkdir -p /app/DataProtectionKeys && chown -R $APP_UID:$APP_UID /app/DataProt
 RUN mkdir -p /app/uploads && chown -R $APP_UID:$APP_UID /app/uploads && chmod -R 775 /app/uploads 
 
 USER $APP_UID
-EXPOSE 8080
 EXPOSE 8081
 
 ARG AUTHORS
